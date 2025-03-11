@@ -1,3 +1,11 @@
+# extras
+.ipynb_checkpoints
+**.pyc 
+**.JPG
+**.json
+**.jpg 
+**.zip
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
