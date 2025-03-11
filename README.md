@@ -1,8 +1,11 @@
 # Coral-CAT-Coral-Color-Assessment-Tool
 The repository contains the scripts an notebook to use AI tools for color assessment using a color chart on coral images  
 
+![Coral-CAT Visual Abstract](app/images/Coral-Cat_app.png)
+
 ## Abstract
 Coral health status assessments based on pigmentation/color rely mostly on the comparison of the coral color with well-established color references, such as the Coral Watch Coral Health Charts (University of Queensland (Siebeck et al. 2006)). In most cases, the assignment of color codes is done manually in a time-consuming and non-standardized way. Here, we present a newly developed semi-automatic image analysis tool to assign color codes to coral images. The pipeline allows the standardized and automatic extraction of the color (RGB) of each pixel of a cropped coral image and assigns the closest color code, which is extracted from the color chart included in the same picture. This feature reduces the bias due to different image lightening. Then, the percentage of pixels corresponding to each color code is assessed. We validated the tool against human visual assessments using a real case study where we assessed the color score of 68 images of coral fragments. Finally, we successfully assessed the color codes of underwater images of coral colonies. This tool provides an easy and objective method for the color assessment of coral images, allowing the monitoring of coral bleaching status and color changes.
+
 
 ## Getting Started
 
