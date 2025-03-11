@@ -20,7 +20,7 @@ Coral health status assessments based on pigmentation/color rely mostly on the c
 
 ### Software Specifications:
 - **Operating System**: Ubuntu 18.04 LTS
-- **Conda version**:  23.9.0
+- **Conda version**:  23.9.0 or higher
 
 
 ### Installation
@@ -70,7 +70,7 @@ The app will be available at `http://localhost:8501/` . To share with another us
     │    └── streamlit_starting_page.py <- Main file to run the Coral CAT app
     │    └── Dockerfile     <- Dockerfile for the app
     │
-    ├── notebooks          <- Jupyter notebooks from the projecs
+    ├── notebooks          <- Jupyter notebooks from the project
     │
     ├── environment.yml   <- The requirements file for reproducing the analysis environment, e.g.
     │                         generated with `conda env export --no-builds | head -n -1 > environment.yml`
