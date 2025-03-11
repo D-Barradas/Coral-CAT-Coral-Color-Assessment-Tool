@@ -38,7 +38,7 @@ def load_model_and_segment(image, model_option='Model_B'):
 
     if is_cuda_available():
         st.markdown("CUDA is available!")
-        device = torch.device("cuda:1")  # reactivate the previous line for the app
+        device = torch.device("cuda")  # reactivate the previous line for the app
     else:
         st.markdown("CUDA is not available. Using CPU.")
         device = torch.device("cpu")
