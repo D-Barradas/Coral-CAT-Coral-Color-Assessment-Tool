@@ -129,7 +129,7 @@ def main():
 
         # Model selection with on_change callback
         model_option = st.selectbox(
-            'We are using CoralScope model', 
+            'We are using CoralSCOP model', 
             ('Model_B'),
             key='model_option',
             on_change=on_model_change  # Call on_model_change when the selection changes
