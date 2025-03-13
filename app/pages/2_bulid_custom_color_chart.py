@@ -366,35 +366,35 @@ def place_copy(bounding_boxes):
     return bounding_boxes
 
 def switch_to_cropping():
-    """Must be one of ['streamlit starting page', 'cropping color chart', 'separate color chart', 'analysis and mapping', 'rotation of the color chart']"""
+    """Must be one of ['streamlit starting page', 'upload image and define areas', 'build custom color chart', 'color analysis and mapping', 'rotation of the color chart']"""
 
     want_to_contribute = st.button("Upload the image?")
     if want_to_contribute:
-        switch_page("cropping color chart")
+        switch_page("upload image and define areas")
 
 def switch_to_rotation_page():
-    """Must be one of ['streamlit starting page', 'cropping color chart', 'separate color chart', 'analysis and mapping', 'rotation of the color chart']"""
+    """Must be one of ['streamlit starting page', 'upload image and define areas', 'build custom color chart', 'color analysis and mapping', 'rotation of the color chart']"""
 
     want_to_contribute = st.button("Rotate the image?")
     if want_to_contribute:
         switch_page("rotation of the color chart")
 
 def switch_to_next():
-    """Must be one of ['streamlit starting page', 'cropping color chart', 'separate color chart', 'analysis and mapping', 'rotation of the color chart']"""
+    """Must be one of ['streamlit starting page', 'upload image and define areas', 'build custom color chart', 'color analysis and mapping', 'rotation of the color chart']"""
 
     want_to_contribute = st.button("Go next phase?")
     if want_to_contribute:
-        switch_page("analysis and mapping")
+        switch_page("color analysis and mapping")
 
 def switch_to_manual():
-    """Must be one of ['streamlit starting page', 'cropping color chart', 'separate color chart', 'analysis and mapping', 'rotation of the color chart']"""
+    """Must be one of ['streamlit starting page', 'upload image and define areas', 'build custom color chart', 'color analysis and mapping', 'rotation of the color chart']"""
 
     want_to_contribute = st.button("Manual selection?")
     if want_to_contribute:
         switch_page("manual selection of colors")
 
 def switch_to_perspective():
-    """Must be one of ['streamlit starting page', 'cropping color chart', 'separate color chart', 'analysis and mapping', 'rotation of the color chart']"""
+    """Must be one of ['streamlit starting page', 'upload image and define areas', 'build custom color chart', 'color analysis and mapping', 'rotation of the color chart']"""
 
     want_to_contribute = st.button("Modify the perpective?")
     if want_to_contribute:

@@ -103,11 +103,11 @@ if 'model_changed' not in st.session_state:
 
 
 def switch_to_cropping():
-    """Must be one of ['streamlit starting page', 'cropping color chart', 'separate color chart', 'analysis and mapping', 'rotation of the color chart']"""
+    """Must be one of ['streamlit starting page', 'upload image and define areas', 'build custom color chart', 'color analysis and mapping', 'rotation of the color chart']"""
 
     want_to_contribute = st.button("Upload the image?")
     if want_to_contribute:
-        switch_page("cropping color chart")
+        switch_page("upload image and define areas")
 
 
 

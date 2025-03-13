@@ -29,11 +29,11 @@ if 'bounding_boxes' not in st.session_state:
 
 
 def switch_to_next():
-    """Must be one of ['streamlit starting page', 'cropping color chart', 'separate color chart', 'analysis and mapping', 'rotation of the color chart']"""
+    """Must be one of ['streamlit starting page', 'upload image and define areas', 'build custom color chart', 'color analysis and mapping', 'rotation of the color chart']"""
 
     want_to_contribute = st.button("Go next phase?")
     if want_to_contribute:
-        switch_page("analysis and mapping")
+        switch_page("color analysis and mapping")
 
 
 def create_the_custom_color_chart_locally(bboxes,color_chart_segment,image_option,dictionary):
@@ -140,11 +140,11 @@ def show_and_draw_boundingboxes(image, image_option):
     #     st.color_picker(f"Color from box {box}", value=f"#{int(avg_color[0]):02x}{int(avg_color[1]):02x}{int(avg_color[2]):02x}")
 
 def switch_to_cropping():
-    """Must be one of ['streamlit starting page', 'cropping color chart', 'separate color chart', 'analysis and mapping', 'rotation of the color chart']"""
+    """Must be one of ['streamlit starting page', 'upload image and define areas', 'build custom color chart', 'color analysis and mapping', 'rotation of the color chart']"""
 
     want_to_contribute = st.button("Upload the image?")
     if want_to_contribute:
-        switch_page("cropping color chart")
+        switch_page("upload image and define areas")
 
 # else:
 #     st.write("No image found in the selected session state.")

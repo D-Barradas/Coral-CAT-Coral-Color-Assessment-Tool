@@ -13,15 +13,15 @@ with open("load_functions.py") as f:
 
 
 def switch_to_color():
-    """Must be one of ['streamlit starting page', 'cropping color chart', 'separate color chart', 'analysis and mapping', 'rotation of the color chart']"""
+    """Must be one of ['streamlit starting page', 'upload image and define areas', 'build custom color chart', 'color analysis and mapping', 'rotation of the color chart']"""
 
     want_to_contribute = st.button("Go back to Separate the color chart segments?")
     if want_to_contribute:
-        switch_page("separate color chart")
+        switch_page("build custom color chart")
 
 
 def switch_to_manual():
-    """Must be one of ['streamlit starting page', 'cropping color chart', 'separate color chart', 'analysis and mapping', 'rotation of the color chart']"""
+    """Must be one of ['streamlit starting page', 'upload image and define areas', 'build custom color chart', 'color analysis and mapping', 'rotation of the color chart']"""
 
     want_to_contribute = st.button("Go back to manual selection of colors?")
     if want_to_contribute:

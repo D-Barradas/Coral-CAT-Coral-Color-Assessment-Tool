@@ -13,21 +13,21 @@ with open("load_functions.py") as f:
 
 
 def switch_to_color():
-    """Must be one of ['streamlit starting page', 'cropping color chart', 'separate color chart', 'analysis and mapping', 'rotation of the color chart']"""
+    """Must be one of ['streamlit starting page', 'upload image and define areas', 'build custom color chart', 'color analysis and mapping', 'rotation of the color chart']"""
 
     want_to_contribute = st.button("Go back to Separate the color chart segments?")
     if want_to_contribute:
-        switch_page("separate color chart")
+        switch_page("build custom color chart")
 
 def switch_to_cropping():
-    """Must be one of ['streamlit starting page', 'cropping color chart', 'separate color chart', 'analysis and mapping', 'rotation of the color chart']"""
+    """Must be one of ['streamlit starting page', 'upload image and define areas', 'build custom color chart', 'color analysis and mapping', 'rotation of the color chart']"""
 
     want_to_contribute = st.button("Upload the image?")
     if want_to_contribute:
-        switch_page("cropping color chart")
+        switch_page("upload image and define areas")
 
 def switch_to_manual():
-    """Must be one of ['streamlit starting page', 'cropping color chart', 'separate color chart', 'analysis and mapping', 'rotation of the color chart']"""
+    """Must be one of ['streamlit starting page', 'upload image and define areas', 'build custom color chart', 'color analysis and mapping', 'rotation of the color chart']"""
 
     want_to_contribute = st.button("Go back to manual selection of colors?")
     if want_to_contribute:
@@ -62,7 +62,7 @@ def load_model_and_segment(image, model_option='Model_B'):
 
     if is_cuda_available():
         st.markdown("CUDA is available!")
-        device = torch.device("cuda:1")  # reactivate the previous line for the app
+        device = torch.device("cuda")  # reactivate the previous line for the app
     else:
         st.markdown("CUDA is not available. Using CPU.")
         device = torch.device("cpu")
@@ -146,7 +146,7 @@ def main():
 
         # Model selection with on_change callback
         model_option = st.selectbox(
-            'We are using CoralScope model', 
+            'We are using CoralSCOP model', 
             ('Model_B'),
             key='model_option',
             on_change=on_model_change  # Call on_model_change when the selection changes

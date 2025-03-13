@@ -177,11 +177,11 @@ def resize_image(crop_img):
 
 
 def switch_to_next():
-    """Must be one of ['streamlit starting page', 'cropping color chart', 'separate color chart', 'analysis and mapping', 'rotation of the color chart']"""
+    """Must be one of ['streamlit starting page', 'upload image and define areas', 'build custom color chart', 'color analysis and mapping', 'rotation of the color chart']"""
 
     want_to_contribute = st.button("Go next phase?")
     if want_to_contribute:
-        switch_page("separate color chart")
+        switch_page("build custom color chart")
 
 
 
@@ -189,7 +189,7 @@ def main():
     # ---------- HEADER ----------
 
     # st.title('Image Segmentation and Analysis')
-    st.title("Select the coral and the chart")
+    st.title("Upload image and define color chart and coral fragment/colony areas")
 
     # # initialize the session state
     # if "coral_img" not in st.session_state:
