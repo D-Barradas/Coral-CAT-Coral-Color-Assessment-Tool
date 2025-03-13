@@ -177,7 +177,7 @@ def resize_image(crop_img):
 
 
 def switch_to_next():
-    """Must be one of ['streamlit starting page', 'upload image and define areas', 'build custom color chart', 'color analysis and mapping', 'rotation of the color chart']"""
+    """Must be one of ['streamlit starting page', 'upload image and define areas', 'bulid custom color chart', 'rotation of the color chart', 'manual selection of colors', 'resize image', 'dewarp the image', 'color analysis and mapping', 'multi-segment analysis', 'batch mode']"""
 
     want_to_contribute = st.button("Go next phase?")
     if want_to_contribute:
