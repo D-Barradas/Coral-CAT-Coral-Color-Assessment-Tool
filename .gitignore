@@ -2,7 +2,7 @@
 **.pth
 .ipynb_checkpoints
 **.pyc 
-**.JPG
+# **.JPG
 **.json
 # **.jpg 
 **.zip
