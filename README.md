@@ -47,7 +47,7 @@ To run the streamlit app, run the following command:
 
 ```bash
 cd app
-streamlit run treamlit_starting_page.py
+streamlit run streamlit_starting_page.py
 ```
 
 The app will be available at `http://localhost:8501/` . To share with another user user the **Network URL** but please use with **caution**.
