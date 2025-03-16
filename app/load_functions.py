@@ -228,7 +228,7 @@ def get_colors(image, number_of_colors, show_chart):
             # 'Count': list(counts.values()),
             'Percentage': list(percentages.values()),
             'Hex': hex_colors,
-            'RGB': rgb_colors 
+            'RGB': [tuple(int(hex_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)) for hex_color in hex_colors]
         })
 
             # Convert the DataFrame to a CSV string
@@ -305,7 +305,7 @@ def calculate_distances_to_colors(image, custom_color_chart):
     # 'E5': (155, 124, 45),
     # 'E6': (111, 85, 34)
     # }
-    
+
     # Defining the color chart
     color_map_RGB = custom_color_chart
 
@@ -562,7 +562,7 @@ def plot_compare_mapped_image(img1_rgb,color_map_RGB):
         'Color Name': color_name,
         'Percentage': percentage_color_name,
         'Hex Color': hex_colors_map,
-        'RGB': [color_map[key] for key in color_name]
+        'RGB': [tuple(int(hex_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)) for hex_color in hex_colors_map]
     })
     
     # Convert the DataFrame to a CSV string
