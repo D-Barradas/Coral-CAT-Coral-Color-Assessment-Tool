@@ -86,7 +86,7 @@ def display_histogram(selected_index):
     """Function to display the histogram."""
     title= f'Image {selected_index}'
     top_RGB_colors = get_colors(st.session_state['segmented_images'][selected_index], 6, True)
-    color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map = calculate_distances_to_colors(image=st.session_state['segmented_images'][selected_index])
+    color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map = calculate_distances_to_colors(image=st.session_state['segmented_images'][selected_index], custom_color_chart=st.session_state['custom_color_chart'])
     plot_compare(st.session_state['segmented_images'][selected_index], color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map, title)
     plot_compare_mapped_image(st.session_state['segmented_images'][selected_index], st.session_state['custom_color_chart'])
 

@@ -230,7 +230,7 @@ def main():
                     # we have to save the names of the images in a list to use it on the download button
                     # 
                     title = f"Image {idx} of {name}"
-                    color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map = calculate_distances_to_colors(image=img)
+                    color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map = calculate_distances_to_colors(image=img, custom_color_chart=custom_color_chart)
                     fig_1, csv_1 = plot_compare_results_to_memory(img, color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map, title)
                     
                     st.session_state[f"euclidian_distance_{idx}_{name}"] = fig_1 
