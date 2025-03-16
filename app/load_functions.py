@@ -202,6 +202,10 @@ def get_colors(image, number_of_colors, show_chart):
     clf = KMeans(n_clusters=number_of_colors, n_init='auto', random_state=73)
     labels = clf.fit_predict(modified_image)
 
+    total_pixels = sum(counts.values())
+    percentages = {k: (v / total_pixels) * 100 for k, v in counts.items()}
+
+
     counts = Counter(labels)
     counts = dict(sorted(counts.items()))
 
@@ -221,7 +225,8 @@ def get_colors(image, number_of_colors, show_chart):
         # add a download button for the color distribution data
         color_distribution_data = pd.DataFrame({
             'Color': list(counts.keys()),
-            'Count': list(counts.values()),
+            # 'Count': list(counts.values()),
+            'Percentage': list(percentages.values()),
             'Hex': hex_colors
         })
 
