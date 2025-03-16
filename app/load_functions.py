@@ -445,6 +445,10 @@ def process_pixel(pixel, palette, palette_keys, color_map_RGB):
 
 def map_color_to_pixels(image, color_map_RGB):
     """ This version uses a costume color chat to do the mapping"""
+
+    if 'Black' not in color_map_RGB.keys():
+        color_map_RGB['Black'] = tuple([0, 0, 0])
+
     palette = np.array([rgb2lab(np.uint8(np.asarray(color_map_RGB[key]))) for key in color_map_RGB.keys()])
     palette_keys = list(color_map_RGB.keys())
 
