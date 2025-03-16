@@ -202,12 +202,12 @@ def get_colors(image, number_of_colors, show_chart):
     clf = KMeans(n_clusters=number_of_colors, n_init='auto', random_state=73)
     labels = clf.fit_predict(modified_image)
 
-    total_pixels = sum(counts.values())
-    percentages = {k: (v / total_pixels) * 100 for k, v in counts.items()}
-
 
     counts = Counter(labels)
     counts = dict(sorted(counts.items()))
+
+    total_pixels = sum(counts.values())
+    percentages = {k: (v / total_pixels) * 100 for k, v in counts.items()}
 
     center_colors = clf.cluster_centers_
     ordered_colors = [center_colors[i] for i in counts.keys()]
