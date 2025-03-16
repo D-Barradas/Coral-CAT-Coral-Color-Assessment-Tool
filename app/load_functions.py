@@ -227,7 +227,8 @@ def get_colors(image, number_of_colors, show_chart):
             'Color': list(counts.keys()),
             # 'Count': list(counts.values()),
             'Percentage': list(percentages.values()),
-            'Hex': hex_colors
+            'Hex': hex_colors,
+            'RGB': rgb_colors 
         })
 
             # Convert the DataFrame to a CSV string
@@ -276,35 +277,38 @@ def match_image_by_color(image, color, threshold = 60, number_of_colors = 10):
         # a euclidian difference of 1000 should be noticible 
         return 1000
     
-def calculate_distances_to_colors(image):
+def calculate_distances_to_colors(image, custom_color_chart):
     # color chart but in RGB 
-    color_map_RGB = {
-    'B1': (247, 248, 232),
-    'B2': (243, 244, 192),
-    'B3': (234, 235, 137),
-    'B4': (200, 206, 57),
-    'B5': (148, 157, 56),
-    'B6': (92, 116, 52),
-    'C1': (247, 235, 232),
-    'C2': (246, 201, 192),
-    'C3': (240, 156, 136),
-    'C4': (207, 90, 58),
-    'C5': (155, 50, 32),
-    'C6': (101, 27, 13),
-    'D1': (246, 235, 224),
-    'D2': (246, 219, 191),
-    'D3': (239, 188, 135),
-    'D4': (211, 147, 78),
-    'D5': (151, 89, 36),
-    'D6': (106, 58, 22),
-    'E1': (247, 242, 227),
-    'E2': (246, 232, 191),
-    'E3': (240, 213, 136),
-    'E4': (209, 174, 68),
-    'E5': (155, 124, 45),
-    'E6': (111, 85, 34)
-    }
+    # color_map_RGB = {
+    # 'B1': (247, 248, 232),
+    # 'B2': (243, 244, 192),
+    # 'B3': (234, 235, 137),
+    # 'B4': (200, 206, 57),
+    # 'B5': (148, 157, 56),
+    # 'B6': (92, 116, 52),
+    # 'C1': (247, 235, 232),
+    # 'C2': (246, 201, 192),
+    # 'C3': (240, 156, 136),
+    # 'C4': (207, 90, 58),
+    # 'C5': (155, 50, 32),
+    # 'C6': (101, 27, 13),
+    # 'D1': (246, 235, 224),
+    # 'D2': (246, 219, 191),
+    # 'D3': (239, 188, 135),
+    # 'D4': (211, 147, 78),
+    # 'D5': (151, 89, 36),
+    # 'D6': (106, 58, 22),
+    # 'E1': (247, 242, 227),
+    # 'E2': (246, 232, 191),
+    # 'E3': (240, 213, 136),
+    # 'E4': (209, 174, 68),
+    # 'E5': (155, 124, 45),
+    # 'E6': (111, 85, 34)
+    # }
     
+    # Defining the color chart
+    color_map_RGB = custom_color_chart
+
     # get the distance 
     final_distances = {}
     for key in color_map_RGB.keys():
@@ -345,6 +349,9 @@ def plot_compare(img1_rgb, color_keys_selected, color_selected_distance, lower_y
     # Adjust layout for a better fit
     fig.update_layout(height=600, width=1100)
 
+    # Convert the hex colors to RGB for output
+    rgb_colors_map = [tuple(int(hex_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)) for hex_color in hex_colors_map]
+
     # Show the plot
     st.plotly_chart(fig)
 
@@ -352,7 +359,8 @@ def plot_compare(img1_rgb, color_keys_selected, color_selected_distance, lower_y
     color_distribution_data = pd.DataFrame({
         'Color Name': color_keys_selected,
         'Euclidean Distance': color_selected_distance,
-        'Hex Color': hex_colors_map
+        'Hex Color': hex_colors_map,
+        'RGB':rgb_colors_map
     })
 
     # Convert the DataFrame to a CSV string
@@ -553,7 +561,8 @@ def plot_compare_mapped_image(img1_rgb,color_map_RGB):
     color_distribution_data = pd.DataFrame({
         'Color Name': color_name,
         'Percentage': percentage_color_name,
-        'Hex Color': hex_colors_map
+        'Hex Color': hex_colors_map,
+        'RGB': [color_map[key] for key in color_name]
     })
     
     # Convert the DataFrame to a CSV string
