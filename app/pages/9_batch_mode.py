@@ -133,7 +133,9 @@ def plot_compare_mapped_image_batch_mode_results_to_memory(img1_rgb, color_map_R
     color_distribution_data = pd.DataFrame({
         'Color Name': color_name,
         'Percentage': percentage_color_name,
-        'Hex Color': hex_colors_map
+        'Hex Color': hex_colors_map,
+        'RGB Color': [tuple([int(hex_color[1:3], 16), int(hex_color[3:5], 16), int(hex_color[5:7], 16)]) for hex_color in hex_colors_map]
+
     })
 
     # Convert the DataFrame to a CSV string
@@ -168,7 +170,8 @@ def plot_compare_results_to_memory(img1_rgb, color_keys_selected, color_selected
     color_distribution_data = pd.DataFrame({
         'Color Name': color_keys_selected,
         'Euclidean Distance': color_selected_distance,
-        'Hex Color': hex_colors_map
+        'Hex Color': hex_colors_map,
+        'RGB Color': [tuple([int(hex_color[1:3], 16), int(hex_color[3:5], 16), int(hex_color[5:7], 16)]) for hex_color in hex_colors_map]
     })
 
     # csv = color_distribution_data.to_csv(index=False).encode('utf-8')
