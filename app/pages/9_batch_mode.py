@@ -180,6 +180,48 @@ def plot_compare_results_to_memory(img1_rgb, color_keys_selected, color_selected
     return fig, color_distribution_data
 
 
+def get_colors_to_memory(image, number_of_colors):
+    # Drop all black pixels from the image
+    non_black_pixels = image[np.any(image != [0, 0, 0], axis=-1)]
+    
+    modified_image = non_black_pixels.reshape(non_black_pixels.shape[0], 3)
+    # modified_image = image.reshape(image.shape[0]*image.shape[1], 3)
+
+    clf = KMeans(n_clusters=number_of_colors, n_init='auto', random_state=73)
+    labels = clf.fit_predict(modified_image)
+
+
+    counts = Counter(labels)
+    counts = dict(sorted(counts.items()))
+
+    total_pixels = sum(counts.values())
+    percentages = {k: (v / total_pixels) * 100 for k, v in counts.items()}
+
+    center_colors = clf.cluster_centers_
+    ordered_colors = [center_colors[i] for i in counts.keys()]
+    hex_colors = [RGB2HEX(ordered_colors[i]) for i in counts.keys()]
+
+    color_distribution_data = pd.DataFrame({
+            'Color': list(counts.keys()),
+            # 'Count': list(counts.values()),
+            'Percentage': list(percentages.values()),
+            'Hex': hex_colors,
+            'RGB': [tuple(int(hex_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)) for hex_color in hex_colors]
+        })
+
+        #     # Convert the DataFrame to a CSV string
+        # csv = color_distribution_data.to_csv(index=False).encode('utf-8')
+
+        # st.download_button(
+        #     label="Download Color Distribution Data",
+        #     data=csv,
+        #     file_name="Pie_chart_color_distribution_data.csv",
+        #     mime="text/csv",
+        # )
+
+    return color_distribution_data
+
+
 
 
 def main():
@@ -231,7 +273,16 @@ def main():
                     # relocate also the st.session_state[f"mapped_image_{idx}_{name}"] = fig
                     # relocate also the st.session_state[f"color_distribution_data_{idx}_{name}"] = csv
                     # we have to save the names of the images in a list to use it on the download button
-                    # 
+
+                    # this section is for the color clustering distribution
+                    # we will set the number of colors to 6 because is a good number of colors to detect on corals
+
+                    csv_pie_chart = get_colors_to_memory(img, number_of_colors=6)
+                    st.session_state[f"colors_detected_on_image_data_{name}_{idx}"] = csv_pie_chart 
+
+
+
+                    #this section is for the euclidian distance
                     title = f"Image {idx} of {name}"
                     color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map = calculate_distances_to_colors(image=img, custom_color_chart=custom_color_chart)
                     fig_1, csv_1 = plot_compare_results_to_memory(img, color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map, title)
@@ -240,7 +291,7 @@ def main():
                     st.session_state[f"clustering_color_data_{name}_{idx}"] = csv_1
 
 
-                    # now we will plot the images
+                    # This section is for the color mapping
                     # plot_compare_mapped_image_batch_mode(list_of_images[0],custom_color_chart,idx)
                     fig , csv = plot_compare_mapped_image_batch_mode_results_to_memory( img , custom_color_chart)
                     # save fig and csv into a dictionary that dictionary will be saved in the session state
@@ -303,6 +354,14 @@ def main():
                     z.write(csv_path_cluster)
                     os.remove(csv_path_cluster)
                     # z.writestr(csv_path, csv_cluster)
+
+                    # save the csv fro pie chart
+                    csv_pie_chart = st.session_state.get(key.replace("mapped_image", "colors_detected_on_image_data"))
+                    csv_path_pie_chart = f"{key.replace("mapped_image", "colors_detected_on_image_data")}.csv"
+                    csv_pie_chart.to_csv(csv_path_pie_chart, index=False)
+                    z.write(csv_path_pie_chart)
+                    os.remove(csv_path_pie_chart)
+                    # z.writestr(csv_path, csv_pie_chart)
 
         # Download the zip file containing both images and CSVs
         st.download_button(
