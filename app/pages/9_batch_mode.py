@@ -236,16 +236,16 @@ def main():
                     color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map = calculate_distances_to_colors(image=img, custom_color_chart=custom_color_chart)
                     fig_1, csv_1 = plot_compare_results_to_memory(img, color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map, title)
                     
-                    st.session_state[f"euclidian_distance_{idx}_{name}"] = fig_1 
-                    st.session_state[f"clustering_color_data_{idx}_{name}"] = csv_1
+                    st.session_state[f"euclidian_distance_{name}_{idx}"] = fig_1 
+                    st.session_state[f"clustering_color_data_{name}_{idx}"] = csv_1
 
 
                     # now we will plot the images
                     # plot_compare_mapped_image_batch_mode(list_of_images[0],custom_color_chart,idx)
                     fig , csv = plot_compare_mapped_image_batch_mode_results_to_memory( img , custom_color_chart)
                     # save fig and csv into a dictionary that dictionary will be saved in the session state
-                    st.session_state[f"mapped_image_{idx}_{name}"] = fig 
-                    st.session_state[f"color_distribution_data_{idx}_{name}"] = csv
+                    st.session_state[f"mapped_image_{name}_{idx}"] = fig 
+                    st.session_state[f"color_distribution_data_{name}_{idx}"] = csv
 
                     end_time = time.time()  # Record the end time
                     elapsed_time = end_time - start_time  # Calculate the elapsed time
