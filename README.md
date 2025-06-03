@@ -33,7 +33,7 @@ Coral health status assessments based on pigmentation/color rely mostly on the c
 Install miniconda or miniforge, the create a python virtual environment and activate it via the following commands:
 
 ```bash
-conda env create -f coral.yaml -p $PWD/env
+conda env create -f environment.yml -p $PWD/env
 conda activate $PWD/env
 ```
 
