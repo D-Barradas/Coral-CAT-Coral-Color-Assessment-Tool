@@ -18,7 +18,7 @@ Coral health status assessments based on pigmentation/color rely mostly on the c
 ### Minimum Hardware Specifications:
 - **CPU**: Quad-core processor (e.g., Intel Core i5 or AMD Ryzen 5)
 - **GPU**: NVIDIA GPU with at least 4 GB VRAM (e.g., NVIDIA GTX 1050 Ti)
-- **RAM**: 16 GB DDR4
+- **RAM**: 4 GB DDR4
 - **Storage**: 256 GB SSD
 
 ### Software Specifications:
