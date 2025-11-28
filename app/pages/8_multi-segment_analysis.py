@@ -2,13 +2,20 @@ import streamlit as st
 import matplotlib.pyplot as plt
 from streamlit_extras.switch_page_button import switch_page
 import sys 
-sys.path.append('../')
+# sys.path.append('../')
+
+# from pathlib import Path
+
+# # Add root directory to Python path
+# ROOT_DIR = Path(__file__).parent.parent
+# sys.path.append(str(ROOT_DIR))
+
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 from PIL import Image
 import io
 
 
-with open("load_functions.py") as f:
+with open("app/load_functions.py") as f:
     exec(f.read())
 
 

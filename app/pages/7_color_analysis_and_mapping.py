@@ -4,7 +4,13 @@ import io
 
 
 import sys
-sys.path.append('../')
+# # sys.path.append('../')
+# from pathlib import Path
+
+# # Add root directory to Python path
+# ROOT_DIR = Path(__file__).parent.parent
+# sys.path.append(str(ROOT_DIR))
+
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 
 from streamlit_extras.switch_page_button import switch_page
@@ -19,7 +25,7 @@ st.write(
     """This part is used to segment and create a mapped image"""
 )
 
-with open("load_functions.py") as f:
+with open("app/load_functions.py") as f:
     exec(f.read())
 
 def is_cuda_available():

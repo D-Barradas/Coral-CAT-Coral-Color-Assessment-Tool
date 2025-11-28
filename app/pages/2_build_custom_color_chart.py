@@ -22,7 +22,7 @@ st.sidebar.header("Select color chart regions")
 st.write(
     """ The color chart is on different rotations This will produce a custom color chart from the selection """
 )
-with open("load_functions.py") as f:
+with open("app/load_functions.py") as f:
     exec(f.read())
 
 
