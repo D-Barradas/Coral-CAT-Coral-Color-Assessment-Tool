@@ -88,4 +88,4 @@ This option allows the analysis of several images simultaneously using the same 
 This option allows the analysis of several segments at the same time.
 """
 )
-st.image("app/images/Coral-Cat_app.png", caption="App usage", use_column_width=True)
+st.image("images/Coral-Cat_app.png", caption="App usage", use_column_width=True)

@@ -11,6 +11,7 @@ from streamlit_extras.switch_page_button import switch_page
 import numpy as np
 
 import easyocr , os , ssl
+
 ssl._create_default_https_context = ssl._create_unverified_context
 
 
@@ -22,8 +23,10 @@ st.sidebar.header("Select color chart regions")
 st.write(
     """ The color chart is on different rotations This will produce a custom color chart from the selection """
 )
-with open("app/load_functions.py") as f:
-    exec(f.read())
+
+from load_functions import crop_my_image, OcrAnalysis, get_colors_df
+# with open("load_functions.py") as f:
+#     exec(f.read())
 
 
 def define_region_selection(image):
@@ -85,7 +88,7 @@ def define_region_selection(image):
                     "up":st.session_state["up"],
                     "down":st.session_state["down"],
                     "left":st.session_state["left"],
-                    "rigth":st.session_state["right"]
+                    "right":st.session_state["right"]
                 }
 
     # print (selected_regions)
@@ -103,7 +106,7 @@ def resize_and_rotate_image(local_image, boxes):
     dictionary_of_crops = {} 
     dictionary_of_greys = {} 
 
-    for t in ["up","down","left","rigth"]:
+    for t in ["up","down","left","right"]:
 
         if t == "down":
             cropped_image = crop_my_image(image=local_image,boxes=boxes, tag=t)
@@ -135,7 +138,7 @@ def resize_and_rotate_image(local_image, boxes):
             dictionary_of_greys[t]= resized_gray
 
             # cv2.imwrite(path_name, cropped_image)
-        elif t == "rigth":
+        elif t == "right":
             # cropped_image = crop_my_image(image=local_image,tag=t)
             cropped_image = crop_my_image(image=local_image,boxes=boxes, tag=t)
             cropped_image = cv2.rotate(cropped_image, cv2.ROTATE_90_COUNTERCLOCKWISE ) 
@@ -169,7 +172,7 @@ def resize_and_rotate_image(local_image, boxes):
 
 def apply_correct_tilt (dictionary_of_crops):
     dictionary_of_crops_corrected = {}
-    for t in ["up","down","left","rigth"]:
+    for t in ["up","down","left","right"]:
         cropped_image = dictionary_of_crops[t]
         try :
             cropped_image = correct_tilt(cropped_image,False)
@@ -396,7 +399,7 @@ def switch_to_manual():
 def switch_to_perspective():
     """Must be one of ['streamlit starting page', 'upload image and define areas', 'build custom color chart', 'color analysis and mapping', 'rotation of the color chart']"""
 
-    want_to_contribute = st.button("Modify the perpective?")
+    want_to_contribute = st.button("Modify the perspective?")
     if want_to_contribute:
         switch_page("dewarp the image")
 
@@ -577,14 +580,6 @@ def main():
         #             bboxes = place_copy(bounding_boxes=bboxes)
         #             text_list.append ("FAKE")
         #             text_list = custom_chart_key_code_and_order[index]
-
-
-
-
-        
-
-
-
 
         #             # # Calculate the area of one of the existing bounding boxes
         #             # existing_bbox_area = (bboxes[0][2] - bboxes[0][0]) * (bboxes[0][3] - bboxes[0][1])

@@ -14,9 +14,9 @@ from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 from PIL import Image
 import io
 
-
-with open("app/load_functions.py") as f:
-    exec(f.read())
+from load_functions import *
+# with open("load_functions.py") as f:
+#     exec(f.read())
 
 
 def switch_to_color():

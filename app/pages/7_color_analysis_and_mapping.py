@@ -25,8 +25,9 @@ st.write(
     """This part is used to segment and create a mapped image"""
 )
 
-with open("app/load_functions.py") as f:
-    exec(f.read())
+from load_functions import *
+# with open("load_functions.py") as f:
+#     exec(f.read())
 
 def is_cuda_available():
     """Checks if CUDA is available and can be used by PyTorch.
