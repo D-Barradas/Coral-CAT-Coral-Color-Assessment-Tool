@@ -1,4 +1,4 @@
 data/
 notebooks/
 environment_M1.yml
-#segment_anything/
+__pycache__/

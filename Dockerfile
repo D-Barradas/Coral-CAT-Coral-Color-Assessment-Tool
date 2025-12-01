@@ -28,6 +28,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY app/ ./
 COPY segment_anything/ ./segment_anything/
+COPY checkpoints/ ./checkpoints/
 
 # Make port 8501 available to the world outside this container
 EXPOSE 8501
