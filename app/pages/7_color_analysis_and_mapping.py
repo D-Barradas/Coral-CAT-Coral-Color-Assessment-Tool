@@ -25,8 +25,9 @@ st.write(
     """This part is used to segment and create a mapped image"""
 )
 
-with open("app/load_functions.py") as f:
-    exec(f.read())
+from load_functions import *
+# with open("load_functions.py") as f:
+#     exec(f.read())
 
 def is_cuda_available():
     """Checks if CUDA is available and can be used by PyTorch.
@@ -39,7 +40,7 @@ def is_cuda_available():
 
 # Function to load a model based on selection
 def load_model_and_segment(image, model_option='Model_B'):
-    sam_checkpoint = "../checkpoints/vit_b_coralscop.pth"  # this is coralSCOPE
+    sam_checkpoint = "checkpoints/vit_b_coralscop.pth"  # this is coralSCOPE
     model_type = "vit_b"
 
     if is_cuda_available():

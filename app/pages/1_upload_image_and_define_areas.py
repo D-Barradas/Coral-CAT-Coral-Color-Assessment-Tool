@@ -14,7 +14,7 @@ st.set_page_config(page_title="Cropping Image", page_icon="🌍")
 #     """This Should crop and same the color from the color chart."""
 # )
 
-with open("app/load_functions.py") as f:
+with open("load_functions.py") as f:
     exec(f.read())
 
 

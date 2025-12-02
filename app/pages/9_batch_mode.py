@@ -14,8 +14,9 @@ from zipfile import ZipFile
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 import time 
 
-with open("app/load_functions.py") as f:
-    exec(f.read())
+from load_functions import *
+# with open("load_functions.py") as f:
+#     exec(f.read())
 
 
 def switch_to_color():
@@ -61,7 +62,7 @@ def is_cuda_available():
 
 # Function to load a model based on selection
 def load_model(model_option='Model_B'):
-    sam_checkpoint = "../checkpoints/vit_b_coralscop.pth"  # this is coralSCOPE
+    sam_checkpoint = "checkpoints/vit_b_coralscop.pth"  # this is coralSCOPE
     model_type = "vit_b"
 
     if is_cuda_available():
