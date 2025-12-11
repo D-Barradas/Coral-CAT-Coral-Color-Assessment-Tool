@@ -13,7 +13,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.express as px
 from io import StringIO
-
+import streamlit as st
 
 def show_mask(mask, ax, random_color=False):
     if random_color:
@@ -52,7 +52,7 @@ def show_anns(anns):
 
 
 def preprocess_histograms(image):
-    #seperating colour channels
+    #separating colour channels
     B = image[:,:,0] #blue layer
     G = image[:,:,1] #green layer
     R = image[:,:,2] #red layer
@@ -274,7 +274,7 @@ def match_image_by_color(image, color, threshold = 60, number_of_colors = 10):
     if diff_avg < threshold:
         return diff_avg
     else:
-        # a euclidian difference of 1000 should be noticible 
+        # a euclidean difference of 1000 should be noticible 
         return 1000
     
 def calculate_distances_to_colors(image, custom_color_chart):

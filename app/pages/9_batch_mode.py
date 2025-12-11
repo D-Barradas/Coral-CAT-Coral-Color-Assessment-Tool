@@ -4,12 +4,19 @@ from streamlit_extras.switch_page_button import switch_page
 import sys ,os
 from io import BytesIO
 from zipfile import ZipFile
-sys.path.append('../')
+# sys.path.append('../')
+# from pathlib import Path
+
+# # Add root directory to Python path
+# ROOT_DIR = Path(__file__).parent.parent
+# sys.path.append(str(ROOT_DIR))
+
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 import time 
 
-with open("load_functions.py") as f:
-    exec(f.read())
+from load_functions import *
+# with open("load_functions.py") as f:
+#     exec(f.read())
 
 
 def switch_to_color():
@@ -55,7 +62,7 @@ def is_cuda_available():
 
 # Function to load a model based on selection
 def load_model(model_option='Model_B'):
-    sam_checkpoint = "../checkpoints/vit_b_coralscop.pth"  # this is coralSCOPE
+    sam_checkpoint = "checkpoints/vit_b_coralscop.pth"  # this is coralSCOPE
     model_type = "vit_b"
 
     if is_cuda_available():
@@ -334,14 +341,14 @@ def main():
 
                     # save the other plot
                     image_cluster = st.session_state.get(key.replace("mapped_image", "euclidian_distance"))
-                    image_path_cluster = f"{key.replace("mapped_image", "euclidian_distance")}.png"
+                    image_path_cluster = f"{key.replace('mapped_image', 'euclidian_distance')}.png"
                     image_cluster.savefig(image_path_cluster, format="png")
                     z.write(image_path_cluster)
                     os.remove(image_path_cluster)
 
                     # save the csv
                     csv = st.session_state.get(key.replace("mapped_image", "color_distribution_data"))
-                    csv_path = f"{key.replace("mapped_image", "color_distribution_data")}.csv"
+                    csv_path = f"{key.replace('mapped_image', 'color_distribution_data')}.csv"
                     csv.to_csv(csv_path, index=False)
                     z.write(csv_path)
                     os.remove(csv_path)
@@ -349,7 +356,7 @@ def main():
                     
                     # save the other csv
                     csv_cluster = st.session_state.get(key.replace("mapped_image", "clustering_color_data"))
-                    csv_path_cluster = f"{key.replace("mapped_image", "clustering_color_data")}.csv"
+                    csv_path_cluster = f"{key.replace('mapped_image', 'clustering_color_data')}.csv"
                     csv_cluster.to_csv(csv_path_cluster, index=False)
                     z.write(csv_path_cluster)
                     os.remove(csv_path_cluster)
@@ -357,7 +364,7 @@ def main():
 
                     # save the csv fro pie chart
                     csv_pie_chart = st.session_state.get(key.replace("mapped_image", "colors_detected_on_image_data"))
-                    csv_path_pie_chart = f"{key.replace("mapped_image", "colors_detected_on_image_data")}.csv"
+                    csv_path_pie_chart = f"{key.replace('mapped_image', 'colors_detected_on_image_data')}.csv"
                     csv_pie_chart.to_csv(csv_path_pie_chart, index=False)
                     z.write(csv_path_pie_chart)
                     os.remove(csv_path_pie_chart)
