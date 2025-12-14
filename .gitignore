@@ -6,6 +6,9 @@
 **.json
 # **.jpg 
 **.zip
+**.out
+**.err
+dcgm/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
