@@ -56,8 +56,16 @@ The app will be available at `http://localhost:8501/` . To share with another us
 
 On the `notebooks` folder, you will find the example notebooks used as quick prototypes of the **Coral CAT app**. You can run them using Jupyter Notebook or Jupyter Lab. Use the provided conda environment to run the notebooks.
 
+**5. Run the app with docker 
 
+```bash
+# Normal run on M1 and windows, no GPUs enabled 
+docker run --rm  -p 8501:8501 --name CoralCat dxbarradas/coralcat_v1.0 streamlit run streamlit_starting_page.py --server.port=8501
 
+# Run on a linux machine with gpus 
+docker run --gpus all --rm  -p 8501:8501 --name CoralCat dxbarradas/coralcat_v1.0:amd64 streamlit run streamlit_starting_page.py --server.port=8501
+
+```
 
 ## Project Organization
 ------------
