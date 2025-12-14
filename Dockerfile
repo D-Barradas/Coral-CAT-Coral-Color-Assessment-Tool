@@ -9,17 +9,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     bzip2 \
-    libglib2.0-0 \
+    libglib2.0-0t64 \
     libglu1-mesa-dev && \
     rm -rf /var/lib/apt/lists/*
-
-
 
 # Set the working directory in the container
 WORKDIR /app
 
 COPY requirements.txt .
-
 
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
