@@ -2,7 +2,7 @@
 #SBATCH --time=01:00:00
 #SBATCH --nodes=1
 #SBATCH --gpus-per-node=1
-#SBATCH --constraint=rtx2080ti
+#SBATCH --constraint=rtx2080ti # or gtx1080ti / v100 depending on availability
 #SBATCH --partition=batch 
 #SBATCH --job-name=coral_app
 #SBATCH --mail-type=ALL

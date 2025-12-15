@@ -2,7 +2,7 @@
 #SBATCH --time=00:30:00
 #SBATCH --nodes=1
 #SBATCH --gpus-per-node=1
-#SBATCH --constraint=rtx2080ti
+#SBATCH --constraint=rtx2080ti # or gtx1080ti / v100 depending on availability
 #SBATCH --partition=batch 
 #SBATCH --cpus-per-gpu=16
 #SBATCH --mem=8G
