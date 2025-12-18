@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --time=00:30:00
+#SBATCH --time=05:00:00
 #SBATCH --nodes=1
 #SBATCH --gpus-per-node=1
 #SBATCH --constraint=rtx2080ti # or gtx1080ti / v100 depending on availability
@@ -50,11 +50,11 @@ SIF_FILE_NAME="coralcat_v1.0_amd64.sif"
 SIF_FILE_PATH="/ibex/user/${USER}/containers/${SIF_FILE_NAME}"
 
 echo "=== Preparing Container Environment ==="
-checking_container_image
 
 # Create containers directory if needed
 mkdir -p /ibex/user/${USER}/containers
 
+checking_container_image
 
 echo "=== Setup SSH tunneling information  ==="
 
