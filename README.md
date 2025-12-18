@@ -59,10 +59,10 @@ On the `notebooks` folder, you will find the example notebooks used as quick pro
 **5. Run the app with docker** 
 
 ```bash
-# Normal run on M1 and windows, no GPUs enabled 
+# Normal run on cpus  
 docker run --rm  -p 8501:8501 --name CoralCat dxbarradas/coralcat_v1.0 streamlit run streamlit_starting_page.py --server.port=8501
 
-# Run on a linux machine with gpus 
+# Run on a machine with gpus (you can change amd64 for lastest)
 docker run --gpus all --rm  -p 8501:8501 --name CoralCat dxbarradas/coralcat_v1.0:amd64 streamlit run streamlit_starting_page.py --server.port=8501
 
 ```
