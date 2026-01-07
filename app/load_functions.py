@@ -15,6 +15,86 @@ import plotly.express as px
 from io import StringIO
 import streamlit as st
 
+_RAPIDS_STATE = {
+    "checked": False,
+    "available": False,
+    "cupy": None,
+    "cuml_kmeans": None,
+}
+
+
+def _init_rapids():
+    """Lazy-check for RAPIDS (CuPy/cuML) availability and cache the result."""
+
+    global _RAPIDS_STATE
+    if _RAPIDS_STATE["checked"]:
+        return
+
+    try:
+        import cupy as cp  # type: ignore
+
+        # Will raise if no CUDA device or driver.
+        cp.cuda.runtime.getDeviceCount()
+
+        try:
+            from cuml.cluster import KMeans as cuKMeans  # type: ignore
+        except Exception:
+            cuKMeans = None
+
+        _RAPIDS_STATE.update(
+            {
+                "checked": True,
+                "available": True,
+                "cupy": cp,
+                "cuml_kmeans": cuKMeans,
+            }
+        )
+    except Exception:
+        _RAPIDS_STATE.update(
+            {
+                "checked": True,
+                "available": False,
+                "cupy": None,
+                "cuml_kmeans": None,
+            }
+        )
+
+
+def rapids_available():
+    """Return True when CUDA + RAPIDS stack is usable, otherwise False."""
+
+    _init_rapids()
+    return bool(_RAPIDS_STATE["available"])
+
+
+def _to_numpy(arr):
+    """Convert CuPy arrays to NumPy while keeping NumPy inputs untouched."""
+
+    _init_rapids()
+    cp = _RAPIDS_STATE["cupy"]
+    if cp is not None and isinstance(arr, cp.ndarray):
+        return cp.asnumpy(arr)
+    return np.asarray(arr)
+
+
+def kmeans_fit_predict(modified_image, n_clusters, random_state=73):
+    """Run KMeans on GPU when possible, otherwise fall back to sklearn."""
+
+    if rapids_available() and _RAPIDS_STATE["cuml_kmeans"] is not None:
+        cp = _RAPIDS_STATE["cupy"]
+        kmeans_gpu = _RAPIDS_STATE["cuml_kmeans"](
+            n_clusters=n_clusters, random_state=random_state
+        )
+        labels = kmeans_gpu.fit_predict(cp.asarray(modified_image, dtype=cp.float32))
+        centers = kmeans_gpu.cluster_centers_
+        return _to_numpy(labels), _to_numpy(centers)
+
+    clf = KMeans(n_clusters=n_clusters, n_init='auto', random_state=random_state)
+    labels = clf.fit_predict(modified_image)
+    centers = clf.cluster_centers_
+    return labels, centers
+
+
 def show_mask(mask, ax, random_color=False):
     if random_color:
         color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
@@ -199,17 +279,18 @@ def get_colors(image, number_of_colors, show_chart):
     modified_image = non_black_pixels.reshape(non_black_pixels.shape[0], 3)
     # modified_image = image.reshape(image.shape[0]*image.shape[1], 3)
 
-    clf = KMeans(n_clusters=number_of_colors, n_init='auto', random_state=73)
-    labels = clf.fit_predict(modified_image)
+    labels, center_colors = kmeans_fit_predict(
+        modified_image, number_of_colors, random_state=73
+    )
+    labels = np.asarray(labels).astype(int)
 
-
-    counts = Counter(labels)
+    counts = Counter(labels.tolist())
     counts = dict(sorted(counts.items()))
 
     total_pixels = sum(counts.values())
     percentages = {k: (v / total_pixels) * 100 for k, v in counts.items()}
 
-    center_colors = clf.cluster_centers_
+    center_colors = np.asarray(center_colors)
     ordered_colors = [center_colors[i] for i in counts.keys()]
     hex_colors = [RGB2HEX(ordered_colors[i]) for i in counts.keys()]
     rgb_colors = [ordered_colors[i] for i in counts.keys()]
@@ -433,40 +514,105 @@ def process_images(image, masks):
     return list_of_images , titles
 
 
-def process_pixel(pixel, palette, palette_keys, color_map_RGB):
-    pixel_lab = rgb2lab(np.uint8(np.asarray(pixel)))
-    distances = deltaE_cie76(pixel_lab, palette)
-    min_distance = np.min(distances)
-    closest_index = np.argmin(distances)
-    closest_color = color_map_RGB[palette_keys[closest_index]]
-    label_min_distance = palette_keys[closest_index]
-    return closest_color, min_distance, label_min_distance
+def _rgb_to_lab_gpu(cp_array):
+    """Vectorized RGB → Lab conversion on GPU to avoid Python loops."""
+
+    cp = _RAPIDS_STATE["cupy"]
+    img = cp_array.astype(cp.float32) / 255.0
+    gamma_mask = img > 0.04045
+    img = cp.where(gamma_mask, ((img + 0.055) / 1.055) ** 2.4, img / 12.92)
+
+    rgb_to_xyz = cp.array(
+        [
+            [0.4124564, 0.3575761, 0.1804375],
+            [0.2126729, 0.7151522, 0.0721750],
+            [0.0193339, 0.1191920, 0.9503041],
+        ],
+        dtype=cp.float32,
+    )
+    xyz = cp.tensordot(img, rgb_to_xyz.T, axes=1) * 100.0
+
+    xyz_ref = cp.array([95.047, 100.0, 108.883], dtype=cp.float32)
+    xyz = xyz / xyz_ref
+    delta = 6 / 29
+
+    def f(t):
+        return cp.where(t > delta ** 3, cp.cbrt(t), (t / (3 * delta ** 2)) + (4 / 29))
+
+    fx, fy, fz = f(xyz[..., 0]), f(xyz[..., 1]), f(xyz[..., 2])
+    L = (116 * fy) - 16
+    a = 500 * (fx - fy)
+    b = 200 * (fy - fz)
+    return cp.stack([L, a, b], axis=-1)
+
+
+def _map_color_to_pixels_gpu(image, color_map_RGB):
+    cp = _RAPIDS_STATE["cupy"]
+    palette_keys = list(color_map_RGB.keys())
+    palette_rgb = cp.asarray([color_map_RGB[key] for key in palette_keys], dtype=cp.float32)
+
+    image_lab = _rgb_to_lab_gpu(cp.asarray(image, dtype=cp.float32))
+    palette_lab = _rgb_to_lab_gpu(palette_rgb)
+
+    height, width, _ = image.shape
+    flat_lab = image_lab.reshape(-1, 3)
+    distances = cp.linalg.norm(flat_lab[:, None, :] - palette_lab[None, :, :], axis=2)
+
+    closest_idx = cp.argmin(distances, axis=1)
+    min_distances = cp.take_along_axis(distances, closest_idx[:, None], axis=1).reshape(height, width)
+
+    mapped_img = palette_rgb[closest_idx].reshape(height, width, 3)
+    mapped_img_cpu = _to_numpy(mapped_img).astype(np.uint8)
+
+    color_to_pixels = defaultdict(list)
+    if palette_keys:
+        labels_cpu = np.array(palette_keys, dtype=object)[_to_numpy(closest_idx).astype(int)]
+        dists_cpu = _to_numpy(min_distances).ravel()
+        for label, dist in zip(labels_cpu, dists_cpu):
+            color_to_pixels[label].append(float(dist))
+
+    return mapped_img_cpu, color_map_RGB, color_to_pixels
+
+
+def _map_color_to_pixels_cpu(image, color_map_RGB):
+    palette_keys = list(color_map_RGB.keys())
+    palette_rgb = np.array([color_map_RGB[key] for key in palette_keys], dtype=np.uint8)
+
+    image_lab = rgb2lab(np.uint8(image))
+    palette_lab = rgb2lab(palette_rgb.reshape(1, -1, 3)).reshape(-1, 3)
+
+    height, width, _ = image.shape
+    flat_lab = image_lab.reshape(-1, 3)
+    distances = np.linalg.norm(flat_lab[:, None, :] - palette_lab[None, :, :], axis=2)
+
+    closest_idx = np.argmin(distances, axis=1)
+    min_distances = distances[np.arange(distances.shape[0]), closest_idx].reshape(height, width)
+
+    mapped_img = palette_rgb[closest_idx].reshape(height, width, 3)
+
+    color_to_pixels = defaultdict(list)
+    labels_flat = np.array(palette_keys, dtype=object)[closest_idx]
+    for label, dist in zip(labels_flat, min_distances.ravel()):
+        color_to_pixels[label].append(float(dist))
+
+    return mapped_img, color_map_RGB, color_to_pixels
 
 
 def map_color_to_pixels(image, color_map_RGB):
-    """ This version uses a costume color chat to do the mapping"""
+    """Map each pixel to the closest palette color, using RAPIDS when available."""
 
-    if 'Black' not in color_map_RGB.keys():
-        color_map_RGB['Black'] = tuple([0, 0, 0])
+    color_map_RGB = dict(color_map_RGB)
+    if "Black" not in color_map_RGB:
+        color_map_RGB["Black"] = (0, 0, 0)
 
-    palette = np.array([rgb2lab(np.uint8(np.asarray(color_map_RGB[key]))) for key in color_map_RGB.keys()])
-    palette_keys = list(color_map_RGB.keys())
+    if rapids_available() and _RAPIDS_STATE["cupy"] is not None:
+        try:
+            return _map_color_to_pixels_gpu(image, color_map_RGB)
+        except Exception:
+            # GPU path failed; continue with CPU fallback without interrupting the app.
+            pass
 
-    # Apply the function to each pixel for each operation
-    func_closest_color = lambda pixel: process_pixel(pixel, palette, palette_keys, color_map_RGB)[0]
-    mapped_img = np.apply_along_axis(func_closest_color, -1, image)
-
-    func_min_distance = lambda pixel: process_pixel(pixel, palette, palette_keys, color_map_RGB)[1]
-    mapped_dist = np.apply_along_axis(func_min_distance, -1, image)
-
-    func_label_min_distance = lambda pixel: process_pixel(pixel, palette, palette_keys, color_map_RGB)[2]
-    mapped_labels = np.apply_along_axis(func_label_min_distance, -1, image)
-
-    color_to_pixels = defaultdict(list)
-    for idx, color in enumerate(mapped_labels.ravel()):
-        color_to_pixels[color].append(mapped_dist.ravel()[idx])
-
-    return mapped_img, color_map_RGB, color_to_pixels
+    return _map_color_to_pixels_cpu(image, color_map_RGB)
 
 
 
@@ -712,14 +858,16 @@ def get_colors_df(image, number_of_colors, show_chart):
     
     # modified_image = image.reshape( image.shape[0]*image.shape[1],3  )
         
-    clf = KMeans(n_clusters = number_of_colors, n_init='auto', random_state=73)
-    labels = clf.fit_predict(modified_image)
+    labels, center_colors = kmeans_fit_predict(
+        modified_image, number_of_colors, random_state=73
+    )
+    labels = np.asarray(labels).astype(int)
         
-    counts = Counter(labels)
+    counts = Counter(labels.tolist())
     # sort to ensure correct color percentage
     counts = dict(sorted(counts.items()))
     # print (counts)
-    center_colors = clf.cluster_centers_
+    center_colors = np.asarray(center_colors)
 
     # We get ordered colors by iterating through the keys
     ordered_colors = [center_colors[i] for i in counts.keys()]
