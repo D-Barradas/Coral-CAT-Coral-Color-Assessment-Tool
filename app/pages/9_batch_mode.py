@@ -4,6 +4,10 @@ from streamlit_extras.switch_page_button import switch_page
 import sys ,os
 from io import BytesIO
 from zipfile import ZipFile
+import pandas as pd
+from pathlib import Path
+import json
+import numpy as np
 # sys.path.append('../')
 # from pathlib import Path
 
@@ -17,6 +21,50 @@ import time
 from load_functions import *
 # with open("load_functions.py") as f:
 #     exec(f.read())
+
+
+def _mask_to_rle(mask):
+    """Run-length encode a boolean mask for lightweight JSON storage."""
+
+    flat = mask.astype(np.uint8).ravel(order="C")
+    counts = []
+    last = 0
+    run = 0
+    for v in flat:
+        if v == last:
+            run += 1
+        else:
+            counts.append(run)
+            run = 1
+            last = v
+    counts.append(run)
+    return counts, list(mask.shape)
+
+
+def _normalize_meta_value(value):
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if hasattr(value, "item"):
+        try:
+            return value.item()
+        except Exception:
+            return value
+    return value
+
+
+def _masks_to_metadata(masks, image_name):
+    records = []
+    for idx, m in enumerate(masks):
+        rec = {"image": image_name, "mask_id": idx}
+        for key, value in m.items():
+            if key == "segmentation":
+                counts, shape = _mask_to_rle(value)
+                rec["segmentation_rle"] = counts
+                rec["segmentation_shape"] = shape
+            else:
+                rec[key] = _normalize_meta_value(value)
+        records.append(rec)
+    return records
 
 
 def switch_to_color():
@@ -265,6 +313,14 @@ def main():
 
             image = get_image(uploaded_file)
             masks = mask_generator.generate(image)
+            # cache SAM metadata in session_state for later use
+            if "sam_metadata_by_image" not in st.session_state:
+                st.session_state["sam_metadata_by_image"] = {}
+            if "sam_metadata_records" not in st.session_state:
+                st.session_state["sam_metadata_records"] = []
+            sam_records = _masks_to_metadata(masks, uploaded_file.name)
+            st.session_state["sam_metadata_by_image"][uploaded_file.name] = sam_records
+            st.session_state["sam_metadata_records"].extend(sam_records)
             # at this point we have the masks and the image crops 
             list_of_images, titles = process_images(image, masks)
 
@@ -377,6 +433,150 @@ def main():
             file_name="results.zip",
             mime="application/zip"
         )
+
+    # Optional: compute real area (mm^2) for SAM masks using cached rulers
+    st.markdown("---")
+    st.header("Optional: compute real areas from rulers")
+    compute_opt_in = st.checkbox("Compute area_mm2 using cached rulers", value=False)
+    if compute_opt_in:
+        sam_meta_path = Path("data/interim/benchmark/sam/sam_segments_metadata.csv")
+
+        sam_source = "csv"
+        if not sam_meta_path.exists():
+            if "sam_metadata_records" in st.session_state and st.session_state["sam_metadata_records"]:
+                st.write("Using SAM metadata from session_state cache.")
+                sam_source = "session"
+            else:
+                st.write(f"SAM metadata not found: {sam_meta_path}")
+                sam_source = "missing"
+        else:
+            st.write(f"Found SAM metadata: {sam_meta_path}")
+
+        # allow optional upload of a rulers CSV to override cached rulers
+        uploaded_rulers = st.file_uploader("(Optional) Upload rulers CSV to use instead", type=["csv"])
+
+        if st.button("Compute area_mm2 now"):
+            # Clean up any existing output file from previous runs
+            cleanup_path = sam_meta_path.parent / 'sam_segments_with_area_mm2.csv'
+            if cleanup_path.exists():
+                try:
+                    cleanup_path.unlink()
+                except Exception:
+                    pass
+            
+            try:
+                if sam_source == "csv":
+                    sam_df = pd.read_csv(sam_meta_path)
+                elif sam_source == "session":
+                    sam_df = pd.DataFrame(st.session_state.get("sam_metadata_records", []))
+                else:
+                    st.error("No SAM metadata available. Run segmentation or provide the metadata CSV.")
+                    sam_df = None
+            except Exception as e:
+                st.error(f"Could not read SAM metadata: {e}")
+                sam_df = None
+
+            if sam_df is not None:
+                if uploaded_rulers:
+                    try:
+                        rulers_df = pd.read_csv(uploaded_rulers)
+                    except Exception as e:
+                        st.error(f"Could not read uploaded rulers CSV: {e}")
+                        rulers_df = pd.DataFrame()
+                elif "ruler_records" in st.session_state and st.session_state["ruler_records"]:
+                    rulers_df = pd.DataFrame(st.session_state["ruler_records"])
+                else:
+                    st.warning("No cached rulers found and none uploaded. Aborting computation.")
+                    rulers_df = pd.DataFrame()
+
+                # Hybrid smart matching: exact match + stem match + single ruler fallback
+                if not rulers_df.empty and 'mm_per_px' in rulers_df.columns:
+                    # Extract basenames (with extension) and stems (without extension)
+                    rulers_df['image_basename'] = rulers_df['image'].fillna('').apply(lambda x: Path(str(x)).name.lower())
+                    rulers_df['image_stem'] = rulers_df['image'].fillna('').apply(lambda x: Path(str(x)).stem.lower())
+                    
+                    sam_df['image_basename'] = sam_df['image'].fillna('').apply(lambda x: Path(str(x)).name.lower())
+                    sam_df['image_stem'] = sam_df['image'].fillna('').apply(lambda x: Path(str(x)).stem.lower())
+                    
+                    # Build lookup dictionaries
+                    rulers_by_basename = rulers_df.set_index('image_basename')['mm_per_px'].to_dict()
+                    rulers_by_stem = rulers_df.set_index('image_stem')['mm_per_px'].to_dict()
+                    
+                    # Pass 1: Try exact basename match (with extension)
+                    sam_df['mm_per_px'] = sam_df['image_basename'].map(rulers_by_basename)
+                    
+                    # Pass 2: For unmatched, try stem match (without extension)
+                    unmatched_mask = sam_df['mm_per_px'].isna()
+                    sam_df.loc[unmatched_mask, 'mm_per_px'] = sam_df.loc[unmatched_mask, 'image_stem'].map(rulers_by_stem)
+                    
+                    # Pass 3: If only 1 unique ruler exists, apply to remaining unmatched
+                    unique_rulers = rulers_df['mm_per_px'].nunique()
+                    unmatched_after_pass2 = sam_df['mm_per_px'].isna()
+                    
+                    if unique_rulers == 1 and unmatched_after_pass2.any():
+                        default_mm_per_px = float(rulers_df['mm_per_px'].iloc[0])
+                        num_applied = unmatched_after_pass2.sum() // len(sam_df[['image']].drop_duplicates())  # rough count of images
+                        sam_df.loc[unmatched_after_pass2, 'mm_per_px'] = default_mm_per_px
+                        st.info(f"ℹ️ Applied single ruler ({default_mm_per_px:.6f} mm/px) to unmatched images.")
+                    
+                    # Create diagnostic matching summary
+                    unique_images = sam_df[['image']].drop_duplicates().sort_values('image')
+                    match_status_list = []
+                    
+                    for img_name in unique_images['image'].values:
+                        img_basename = sam_df[sam_df['image'] == img_name]['image_basename'].iloc[0]
+                        img_stem = sam_df[sam_df['image'] == img_name]['image_stem'].iloc[0]
+                        mm_val = sam_df[sam_df['image'] == img_name]['mm_per_px'].iloc[0]
+                        
+                        if img_basename in rulers_by_basename:
+                            status = "✓ Exact (with ext)"
+                        elif img_stem in rulers_by_stem:
+                            status = "✓ Matched (no ext)"
+                        elif pd.notna(mm_val) and unique_rulers == 1:
+                            status = "✓ Default rule"
+                        else:
+                            status = "❌ No match"
+                        
+                        match_status_list.append({
+                            'Image': img_name,
+                            'mm_per_px': f"{mm_val:.6f}" if pd.notna(mm_val) else "—",
+                            'Status': status
+                        })
+                    
+                    match_summary_df = pd.DataFrame(match_status_list)
+                    
+                    # Display diagnostic table
+                    st.subheader("📊 Ruler Matching Summary")
+                    st.dataframe(match_summary_df, use_container_width=True, hide_index=True)
+                    
+                    # Check for any unmatched
+                    failed_count = (match_summary_df['Status'] == '❌ No match').sum()
+                    if failed_count > 0:
+                        st.warning(f"⚠️ {failed_count} image(s) could not be matched to rulers. Download may have empty mm_per_px values.")
+                    else:
+                        st.success(f"✅ All {len(match_summary_df)} image(s) matched successfully!")
+                    
+                    # Continue with area computation
+                    sam_df['area_px'] = pd.to_numeric(sam_df.get('area', sam_df.get('area_px', pd.Series())), errors='coerce')
+                    sam_df['area_mm2'] = sam_df.apply(lambda r: r['area_px'] * (r['mm_per_px'] ** 2) if pd.notna(r.get('mm_per_px')) and pd.notna(r.get('area_px')) else pd.NA, axis=1)
+
+                    # Select only required columns for compact output
+                    compact_columns = ['image', 'mask_id', 'image_basename', 'mm_per_px', 'area_px', 'area_mm2']
+                    available_cols = [col for col in compact_columns if col in sam_df.columns]
+                    compact_df = sam_df[available_cols]
+                    
+                    # Create CSV in memory
+                    csv_bytes = compact_df.to_csv(index=False).encode('utf-8')
+                    st.success(f"✅ Computed area_mm2 for {len(compact_df)} mask segments.")
+                    st.download_button("Download segments with area (CSV)", data=csv_bytes, file_name="sam_segments_with_area_mm2.csv", mime='text/csv')
+
+                else:
+                    st.warning('No valid rulers data found (missing mm_per_px). Save a ruler via the app or upload a valid CSV.')
+
+        # allow downloading cached metadata as JSON
+        if "sam_metadata_records" in st.session_state and st.session_state["sam_metadata_records"]:
+            meta_json = json.dumps(st.session_state["sam_metadata_records"], separators=(",", ":"))
+            st.download_button("Download SAM metadata (JSON)", data=meta_json, file_name="sam_segments_metadata_cache.json", mime="application/json")
 
 
 
