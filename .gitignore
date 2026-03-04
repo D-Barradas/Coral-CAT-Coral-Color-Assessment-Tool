@@ -8,7 +8,11 @@
 **.zip
 **.out
 **.err
+**.png
 dcgm/
+data/interim/benchmark
+data/photos-micro-corals
+app/segment_anything
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
