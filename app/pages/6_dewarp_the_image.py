@@ -18,6 +18,12 @@ def switch_to_cropping():
     if want_to_contribute:
         switch_page("upload image and define areas")
 
+def switch_to_ruler():
+    """Navigate back to ruler selection page"""
+    want_to_contribute = st.button("← Back to Ruler Selection")
+    if want_to_contribute:
+        switch_page("select ruler")
+
 def is_color_chart_in_session_state():
     if "chart_img" not in st.session_state:
 
@@ -91,29 +97,66 @@ def select_perspective_points(image_shape):
 
 
 def main():
-    st.title("De-Warping of the color chart")
-    if "chart_img" in st.session_state:
-        st.title("Perspective correction of the color chart")
-        st.markdown("In this page, you can correct the perspective of the color chart.")
-        # st.markdown("You can also add padding to the image to avoid cropping.")
-        st.markdown("After adjusting the perspective of the image, you can save the image to memory.")
-        st.markdown("You can also go back to the previous page to separate the color chart segments.")
-
-        is_color_chart_in_session_state()
-        image = st.session_state["chart_img"]
-
-        pts = select_perspective_points(image.shape)
-        rotated_image = perspective_correction(image, pts)
-        st.image(rotated_image, caption="Warp Image", use_column_width=True)
-
-
-
-        if st.button("Save Images to memory"):
-            st.session_state["chart_img"] = rotated_image
-        switch_to_color()
+    st.title("Perspective Correction Tool (Dewarp)")
+    
+    # Mode selection - determine what we're working with
+    working_mode = None
+    if "ruler_img" in st.session_state and "chart_img" in st.session_state:
+        # Both available - let user choose
+        st.info("🔀 Both Chart and Ruler images are available. Select which one to dewarp:")
+        working_mode = st.radio("Working with:", ["Color Chart", "Ruler"], horizontal=True)
+    elif "ruler_img" in st.session_state:
+        working_mode = "Ruler"
+        st.info("📏 Working with: **Ruler Image**")
+    elif "chart_img" in st.session_state:
+        working_mode = "Color Chart"
+        st.info("🎨 Working with: **Color Chart**")
     else:
-        st.write("Please go to page 1 to upload the image and select the color chart")
-        switch_to_cropping()
+        st.warning("⚠️ No image found in memory.")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("Upload a color chart:")
+            switch_to_cropping()
+        with col2:
+            st.write("Upload a ruler:")
+            switch_to_ruler()
+        return
+    
+    # Get the appropriate image based on mode
+    if working_mode == "Ruler":
+        image_key = "ruler_img"
+        title_text = "Ruler"
+        save_button_text = "💾 Save Ruler to Memory"
+    else:
+        image_key = "chart_img"
+        title_text = "Color Chart"
+        save_button_text = "💾 Save Chart to Memory"
+    
+    image = st.session_state[image_key]
+    
+    st.markdown(f"### Dewarping the {title_text}")
+    st.markdown("Correct the perspective distortion by selecting four corner points.")
+    st.markdown("After adjusting the perspective, save it back to memory.")
+
+    pts = select_perspective_points(image.shape)
+    warped_image = perspective_correction(image, pts)
+    st.image(warped_image, caption=f"{title_text} (Dewarped)", use_column_width=True)
+
+    # Save button
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        if st.button(save_button_text, type="primary", use_container_width=True):
+            st.session_state[image_key] = warped_image
+            st.success(f"✅ {title_text} saved to memory!")
+            st.balloons()
+    
+    # Navigation
+    st.markdown("---")
+    st.header("Navigation")
+    if working_mode == "Ruler":
+        switch_to_ruler()
+    else:
+        switch_to_color()
 
 # Streamlit app execution
 if __name__ == '__main__':
