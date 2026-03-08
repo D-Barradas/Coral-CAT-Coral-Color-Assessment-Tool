@@ -13,6 +13,7 @@ dcgm/
 data/interim/benchmark
 data/photos-micro-corals
 app/segment_anything
+**.backup
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
