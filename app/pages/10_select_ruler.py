@@ -197,9 +197,9 @@ def main():
 
             st.write(f"**Selection Details:** x=[{x0}, {x1}] y=[{y0}, {y1}] | Width={px_w}px Height={px_h}px")
 
-            # Preview crop
+            # # Preview crop
             crop = img[y0:y1, x0:x1].copy()
-            st.image(crop, caption="Ruler Crop Preview", use_column_width=False)
+            st.image(crop, caption="Ruler Crop Preview", use_column_width=True)
             
             # Step 4: Measurement specification
             st.markdown("---")
@@ -260,13 +260,13 @@ def main():
                     records.append(rec)
 
                     # Save to CSV
-                    csv_path = _save_ruler_csv(records)
+                    # csv_path = _save_ruler_csv(records)
 
                     # Also store latest in session state
                     st.session_state["ruler"] = rec
 
                     st.success(f"✅ Ruler #{ruler_count + 1} saved! Conversion: **{mm_per_px:.6f} mm/px**")
-                    st.info(f"📁 Data saved to: `{csv_path}`")
+                    # st.info(f"📁 Data saved to: `{csv_path}`")
                     st.info("🔄 You can now select another ruler from this image or switch images")
                     
                     # Rerun to update the counter
