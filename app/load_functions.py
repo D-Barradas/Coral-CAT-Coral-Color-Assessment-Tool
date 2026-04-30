@@ -216,6 +216,22 @@ def convert_black_to_white(image):
     image[np.where((image == [0,0,0]).all(axis=2))] = [255,255,255]
     return image
 
+
+def paint_non_mask_pixels(image, foreground_mask=None, fill_color=(255, 255, 255)):
+    """Paint non-foreground pixels with a display color while preserving masked pixels."""
+
+    image = np.asarray(image).copy()
+    if foreground_mask is None:
+        # Legacy behavior where background was represented by black.
+        return convert_black_to_white(image)
+
+    mask = np.asarray(foreground_mask).astype(bool)
+    if mask.ndim != 2 or mask.shape != image.shape[:2]:
+        raise ValueError("foreground_mask must be a 2D boolean array matching image height/width")
+
+    image[~mask] = fill_color
+    return image
+
 def map_white_pixels(source_image, target_image):
     """Maps white pixels from the source image to the target image.
 
@@ -461,12 +477,12 @@ def calculate_distances_to_colors(image, custom_color_chart, foreground_mask=Non
     return color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit,hex_colors_map
 
 
-def plot_compare(img1_rgb, color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map,title):
+def plot_compare(img1_rgb, color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map, title, foreground_mask=None):
     # Create a subplot grid with 1 row and 2 columns
     fig = make_subplots(rows=1, cols=2, subplot_titles=(title, "Euclidean Distance from Top 5 Colors Detected"))
     
-    # Convert black pixels to white in the image to show
-    img1_rgb = convert_black_to_white(img1_rgb)
+    # Display foreground on white background while preserving masked colors.
+    img1_rgb = paint_non_mask_pixels(img1_rgb, foreground_mask=foreground_mask)
 
     # Add the image to the first subplot
     fig.add_trace(go.Image(z=img1_rgb), row=1, col=1)
@@ -701,7 +717,7 @@ def map_color_to_pixels(image, color_map_RGB, foreground_mask=None):
 
 
 
-def count_pixel_colors(image, color_map_RGB, foreground_mask=None):
+def count_pixel_colors(image, color_map_RGB, foreground_mask=None, include_black=True):
     """
     Counts the number of pixels of each color in an image.
 
@@ -725,10 +741,10 @@ def count_pixel_colors(image, color_map_RGB, foreground_mask=None):
 
     # Count the occurrences of each pixel value
     pixel_counts = Counter(tuple(pixel_1) for pixel_1 in all_pixels_list)
-    pixel_counts.pop((0, 0, 0), None)
+    if not include_black:
+        pixel_counts.pop((0, 0, 0), None)
 
-    # sum non-black values for percentage base
-    total_pixels = np.sum([item for key, item in pixel_counts.items() if key != (0, 0, 0)])
+    total_pixels = np.sum(list(pixel_counts.values()))
     if total_pixels == 0:
         return pixel_counts, {color_name: 0 for color_name in reverse_dict.values()}
 
@@ -759,13 +775,12 @@ def plot_compare_mapped_image(img1_rgb, color_map_RGB, foreground_mask=None):
         color_map_RGB=color_map_RGB,
         foreground_mask=foreground_mask,
     )
-    color_map.pop('Black', None)
-    color_to_pixels.pop('Black', None)
 
     color_counts, reverse_dict = count_pixel_colors(
         image=mapped_image,
         color_map_RGB=color_map,
         foreground_mask=foreground_mask,
+        include_black=True,
     )
     lists = sorted(reverse_dict.items(), key=lambda kv: kv[1], reverse=True)
 
@@ -777,10 +792,9 @@ def plot_compare_mapped_image(img1_rgb, color_map_RGB, foreground_mask=None):
 
     hex_colors_map = [RGB2HEX(color_map[key]) for key in color_name]
 
-    # apply convert_black_to_white
-    img1_rgb = convert_black_to_white(img1_rgb)
-    mapped_image = convert_black_to_white(mapped_image)
-    # img1_rgb = map_white_pixels(source_image=mapped_image,target_image=img1_rgb)
+    # White background outside mask for display, preserve real black class inside mask.
+    img1_rgb = paint_non_mask_pixels(img1_rgb, foreground_mask=foreground_mask)
+    mapped_image = paint_non_mask_pixels(mapped_image, foreground_mask=foreground_mask)
 
 
     # Create a subplot grid with adjusted row widths and column widths
