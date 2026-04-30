@@ -85,10 +85,27 @@ def create_plot(image, masks):
 def display_histogram(selected_index):
     """Function to display the histogram."""
     title= f'Image {selected_index}'
-    top_RGB_colors = get_colors(st.session_state['segmented_images'][selected_index], 6, True)
-    color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map = calculate_distances_to_colors(image=st.session_state['segmented_images'][selected_index], custom_color_chart=st.session_state['custom_color_chart'])
+    foreground_mask = None
+    if 'segmented_foreground_masks' in st.session_state:
+        foreground_mask = st.session_state['segmented_foreground_masks'][selected_index]
+
+    top_RGB_colors = get_colors(
+        st.session_state['segmented_images'][selected_index],
+        6,
+        True,
+        foreground_mask=foreground_mask,
+    )
+    color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map = calculate_distances_to_colors(
+        image=st.session_state['segmented_images'][selected_index],
+        custom_color_chart=st.session_state['custom_color_chart'],
+        foreground_mask=foreground_mask,
+    )
     plot_compare(st.session_state['segmented_images'][selected_index], color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map, title)
-    plot_compare_mapped_image(st.session_state['segmented_images'][selected_index], st.session_state['custom_color_chart'])
+    plot_compare_mapped_image(
+        st.session_state['segmented_images'][selected_index],
+        st.session_state['custom_color_chart'],
+        foreground_mask=foreground_mask,
+    )
 
     # Define a function to be called when the model selection changes
 def on_model_change():
@@ -140,13 +157,18 @@ def main():
             # if st.session_state.get('segment'):
             masks = load_model_and_segment(coral_image, model_option)
             # print(type(masks),masks)
-            list_of_images, titles = process_images(image=coral_image, masks=masks)
+            list_of_images, titles, list_of_foreground_masks = process_images(
+                image=coral_image,
+                masks=masks,
+                return_foreground_masks=True,
+            )
             
             # Create the plot and store it in session state
             create_plot(coral_image, masks)
 
             # Save the segmented images and titles in session state
             st.session_state['segmented_images'] = list_of_images
+            st.session_state['segmented_foreground_masks'] = list_of_foreground_masks
             st.session_state['titles'] = titles
 
             # Initial selection
