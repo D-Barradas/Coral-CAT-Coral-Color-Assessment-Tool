@@ -9,6 +9,8 @@
 **.out
 **.err
 dcgm/
+app/segment_anything
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
