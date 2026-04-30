@@ -95,12 +95,20 @@ def load_model_and_segment(image, model_option='Model_B'):
     return masks
 
 
-def multiple_mask_output(image):
+def multiple_mask_output(image, foreground_mask=None):
     title= f'Image stacked'
-    top_RGB_colors = get_colors(image, 6, True)
-    color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map = calculate_distances_to_colors(image=image)
+    top_RGB_colors = get_colors(image, 6, True, foreground_mask=foreground_mask)
+    color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map = calculate_distances_to_colors(
+        image=image,
+        custom_color_chart=st.session_state['custom_color_chart'],
+        foreground_mask=foreground_mask,
+    )
     plot_compare(image, color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map, title)
-    plot_compare_mapped_image(image, st.session_state['custom_color_chart'])
+    plot_compare_mapped_image(
+        image,
+        st.session_state['custom_color_chart'],
+        foreground_mask=foreground_mask,
+    )
 
 
     # Define a function to be called when the model selection changes
@@ -164,13 +172,18 @@ def main():
             # if st.session_state.get('segment'):
             masks = load_model_and_segment(coral_image, model_option)
             # print(type(masks),masks)
-            list_of_images, titles = process_images(image=coral_image, masks=masks)
+            list_of_images, titles, list_of_foreground_masks = process_images(
+                image=coral_image,
+                masks=masks,
+                return_foreground_masks=True,
+            )
             
             # Create the plot and store it in session state
             create_plot(coral_image, masks)
 
             # Save the segmented images and titles in session state
             st.session_state['segmented_images'] = list_of_images
+            st.session_state['segmented_foreground_masks'] = list_of_foreground_masks
             st.session_state['titles'] = titles
 
             # Initial selection
@@ -200,8 +213,11 @@ def main():
                     if st.button('Generate Stacked Image'):
                         stacked_images = [st.session_state['segmented_images'][idx] for idx in selected_indices]
                         stacked_image = stack_images(stacked_images, direction="horizontal")
+                        stacked_masks = [st.session_state['segmented_foreground_masks'][idx] for idx in selected_indices]
+                        stacked_foreground_mask = np.hstack(stacked_masks)
                         st.image(stacked_image, caption='Stacked Image', use_column_width=True)
                         st.session_state['stacked_image'] = stacked_image
+                        st.session_state['stacked_foreground_mask'] = stacked_foreground_mask
                         
                 # Button to trigger the histogram plot
                 if st.button('Analyze colors in the selected image'):
@@ -209,7 +225,10 @@ def main():
 
                 if st.session_state.get('plot_histogram'):
                     if 'stacked_image' in st.session_state:
-                        multiple_mask_output(st.session_state['stacked_image'])
+                        multiple_mask_output(
+                            st.session_state['stacked_image'],
+                            foreground_mask=st.session_state.get('stacked_foreground_mask'),
+                        )
                         OcrAnalysis.plot_custom_colorchart(color_chart)
                         st.session_state['plot_histogram'] = False
                     else:
