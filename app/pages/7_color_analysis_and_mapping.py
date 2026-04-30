@@ -100,7 +100,16 @@ def display_histogram(selected_index):
         custom_color_chart=st.session_state['custom_color_chart'],
         foreground_mask=foreground_mask,
     )
-    plot_compare(st.session_state['segmented_images'][selected_index], color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map, title)
+    plot_compare(
+        st.session_state['segmented_images'][selected_index],
+        color_keys_selected,
+        color_selected_distance,
+        lower_y_limit,
+        higher_y_limit,
+        hex_colors_map,
+        title,
+        foreground_mask=foreground_mask,
+    )
     plot_compare_mapped_image(
         st.session_state['segmented_images'][selected_index],
         st.session_state['custom_color_chart'],
@@ -180,15 +189,31 @@ def main():
                 st.image(st.session_state['plot_image'], caption='Original Image with Annotations')
 
             if 'segmented_images' in st.session_state:
+                show_white_background = st.toggle(
+                    'Preview with white background outside mask',
+                    value=True,
+                    key='page7_white_bg_preview',
+                )
+
                 # User selects from the segmented images
                 selected_index = st.selectbox('Select a segmented image', 
                                             range(len(st.session_state['segmented_images'])),
                                             key='selected_image_index')
             
                 # Display the selected segmented image
-                st.image(st.session_state['segmented_images'][selected_index], 
-                        caption=f'Image {selected_index}',
-                        use_column_width=True)
+                if show_white_background:
+                    display_seg = paint_non_mask_pixels(
+                        st.session_state['segmented_images'][selected_index],
+                        foreground_mask=st.session_state['segmented_foreground_masks'][selected_index],
+                    )
+                    caption = f'Image {selected_index} (White BG outside mask)'
+                else:
+                    display_seg = st.session_state['segmented_images'][selected_index]
+                    caption = f'Image {selected_index} (Raw masked view)'
+
+                st.image(display_seg,
+                        caption=caption,
+                    use_column_width=True)
 
                 # Button to trigger the histogram plot
                 if st.button('Analyze colors in the selected image'):
