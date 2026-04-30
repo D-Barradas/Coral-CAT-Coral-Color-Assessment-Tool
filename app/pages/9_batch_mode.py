@@ -141,18 +141,26 @@ def load_model(model_option='Model_B'):
     return mask_generator
 
 
-def plot_compare_mapped_image_batch_mode_results_to_memory(img1_rgb, color_map_RGB):
+def plot_compare_mapped_image_batch_mode_results_to_memory(img1_rgb, color_map_RGB, foreground_mask=None):
     # check if the black color is in the color map if not add it
     if 'Black' not in color_map_RGB.keys():
         color_map_RGB['Black'] = tuple([0, 0, 0])
 
-    mapped_image, color_map, color_to_pixels = map_color_to_pixels(image=img1_rgb, color_map_RGB=color_map_RGB)
+    mapped_image, color_map, color_to_pixels = map_color_to_pixels(
+        image=img1_rgb,
+        color_map_RGB=color_map_RGB,
+        foreground_mask=foreground_mask,
+    )
     if 'Black' in color_map.keys():
         del color_map['Black']
     if 'Black' in color_to_pixels.keys():
         del color_to_pixels['Black']
 
-    color_counts, reverse_dict = count_pixel_colors(image=mapped_image, color_map_RGB=color_map)
+    color_counts, reverse_dict = count_pixel_colors(
+        image=mapped_image,
+        color_map_RGB=color_map,
+        foreground_mask=foreground_mask,
+    )
     lists = sorted(reverse_dict.items(), key=lambda kv: kv[1], reverse=True)
 
     color_name, percentage_color_name = [], []
@@ -235,11 +243,20 @@ def plot_compare_results_to_memory(img1_rgb, color_keys_selected, color_selected
     return fig, color_distribution_data
 
 
-def get_colors_to_memory(image, number_of_colors):
-    # Drop all black pixels from the image
-    non_black_pixels = image[np.any(image != [0, 0, 0], axis=-1)]
-    
-    modified_image = non_black_pixels.reshape(non_black_pixels.shape[0], 3)
+def get_colors_to_memory(image, number_of_colors, foreground_mask=None):
+    if foreground_mask is not None:
+        mask = np.asarray(foreground_mask).astype(bool)
+        if mask.ndim != 2 or mask.shape != image.shape[:2]:
+            raise ValueError("foreground_mask must be a 2D boolean array matching image height/width")
+        selected_pixels = image[mask]
+    else:
+        # Legacy fallback when masks are unavailable
+        selected_pixels = image[np.any(image != [0, 0, 0], axis=-1)]
+
+    if selected_pixels.size == 0:
+        return pd.DataFrame(columns=['Color', 'Percentage', 'Hex', 'RGB'])
+
+    modified_image = selected_pixels.reshape(selected_pixels.shape[0], 3)
     # modified_image = image.reshape(image.shape[0]*image.shape[1], 3)
 
     clf = KMeans(n_clusters=number_of_colors, n_init='auto', random_state=73)
@@ -322,7 +339,11 @@ def main():
             st.session_state["sam_metadata_by_image"][uploaded_file.name] = sam_records
             st.session_state["sam_metadata_records"].extend(sam_records)
             # at this point we have the masks and the image crops 
-            list_of_images, titles = process_images(image, masks)
+            list_of_images, titles, list_of_foreground_masks = process_images(
+                image,
+                masks,
+                return_foreground_masks=True,
+            )
 
             if len(list_of_images) > 1:
                 st.write(f"Warning {len(list_of_images)} coral images detected on image:{name}")
@@ -330,7 +351,7 @@ def main():
 
             # if len(list_of_images) > 1: # we have to change this for the for look 
             with st.status(f"Processing images of {name} ...", expanded=True) as status:
-                for idx , img in enumerate ( list_of_images) :
+                for idx, (img, fg_mask) in enumerate(zip(list_of_images, list_of_foreground_masks)):
                     start_time = time.time()  # Record the start time 
                     # relocate the idx to the for loop here and add the name of the image
                     # relocate also the st.session_state[f"mapped_image_{idx}_{name}"] = fig
@@ -340,14 +361,22 @@ def main():
                     # this section is for the color clustering distribution
                     # we will set the number of colors to 6 because is a good number of colors to detect on corals
 
-                    csv_pie_chart = get_colors_to_memory(img, number_of_colors=6)
+                    csv_pie_chart = get_colors_to_memory(
+                        img,
+                        number_of_colors=6,
+                        foreground_mask=fg_mask,
+                    )
                     st.session_state[f"colors_detected_on_image_data_{name}_{idx}"] = csv_pie_chart 
 
 
 
                     #this section is for the euclidian distance
                     title = f"Image {idx} of {name}"
-                    color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map = calculate_distances_to_colors(image=img, custom_color_chart=custom_color_chart)
+                    color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map = calculate_distances_to_colors(
+                        image=img,
+                        custom_color_chart=custom_color_chart,
+                        foreground_mask=fg_mask,
+                    )
                     fig_1, csv_1 = plot_compare_results_to_memory(img, color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map, title)
                     
                     st.session_state[f"euclidian_distance_{name}_{idx}"] = fig_1 
@@ -356,7 +385,11 @@ def main():
 
                     # This section is for the color mapping
                     # plot_compare_mapped_image_batch_mode(list_of_images[0],custom_color_chart,idx)
-                    fig , csv = plot_compare_mapped_image_batch_mode_results_to_memory( img , custom_color_chart)
+                    fig, csv = plot_compare_mapped_image_batch_mode_results_to_memory(
+                        img,
+                        custom_color_chart,
+                        foreground_mask=fg_mask,
+                    )
                     # save fig and csv into a dictionary that dictionary will be saved in the session state
                     st.session_state[f"mapped_image_{name}_{idx}"] = fig 
                     st.session_state[f"color_distribution_data_{name}_{idx}"] = csv
