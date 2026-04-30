@@ -151,15 +151,11 @@ def plot_compare_mapped_image_batch_mode_results_to_memory(img1_rgb, color_map_R
         color_map_RGB=color_map_RGB,
         foreground_mask=foreground_mask,
     )
-    if 'Black' in color_map.keys():
-        del color_map['Black']
-    if 'Black' in color_to_pixels.keys():
-        del color_to_pixels['Black']
-
     color_counts, reverse_dict = count_pixel_colors(
         image=mapped_image,
         color_map_RGB=color_map,
         foreground_mask=foreground_mask,
+        include_black=True,
     )
     lists = sorted(reverse_dict.items(), key=lambda kv: kv[1], reverse=True)
 
@@ -175,11 +171,11 @@ def plot_compare_mapped_image_batch_mode_results_to_memory(img1_rgb, color_map_R
     fig, axes = plt.subplots(1, 3, figsize=(15, 6))
 
     # Add the original image, mapped image, and the bar chart to respective subplots
-    axes[0].imshow(img1_rgb)
+    axes[0].imshow(paint_non_mask_pixels(img1_rgb, foreground_mask=foreground_mask))
     axes[0].set_title("Original")
     axes[0].axis('off')
 
-    axes[1].imshow(mapped_image)
+    axes[1].imshow(paint_non_mask_pixels(mapped_image, foreground_mask=foreground_mask))
     axes[1].set_title("Mapped Image")
     axes[1].axis('off')
 
@@ -207,9 +203,9 @@ def plot_compare_mapped_image_batch_mode_results_to_memory(img1_rgb, color_map_R
     return fig, color_distribution_data
 
 
-def plot_compare_results_to_memory(img1_rgb, color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map, title):
-    # Convert black pixels to white in the image to show
-    img1_rgb = convert_black_to_white(img1_rgb)
+def plot_compare_results_to_memory(img1_rgb, color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map, title, foreground_mask=None):
+    # White background outside foreground for display only.
+    img1_rgb = paint_non_mask_pixels(img1_rgb, foreground_mask=foreground_mask)
 
     # Create a subplot grid with 1 row and 2 columns
     fig, axes = plt.subplots(1, 2, figsize=(15, 6))
@@ -377,8 +373,17 @@ def main():
                         custom_color_chart=custom_color_chart,
                         foreground_mask=fg_mask,
                     )
-                    fig_1, csv_1 = plot_compare_results_to_memory(img, color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map, title)
-                    
+                    fig_1, csv_1 = plot_compare_results_to_memory(
+                        img,
+                        color_keys_selected,
+                        color_selected_distance,
+                        lower_y_limit,
+                        higher_y_limit,
+                        hex_colors_map,
+                        title,
+                        foreground_mask=fg_mask,
+                    )
+
                     st.session_state[f"euclidian_distance_{name}_{idx}"] = fig_1 
                     st.session_state[f"clustering_color_data_{name}_{idx}"] = csv_1
 
