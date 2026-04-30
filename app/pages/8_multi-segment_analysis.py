@@ -103,7 +103,16 @@ def multiple_mask_output(image, foreground_mask=None):
         custom_color_chart=st.session_state['custom_color_chart'],
         foreground_mask=foreground_mask,
     )
-    plot_compare(image, color_keys_selected, color_selected_distance, lower_y_limit, higher_y_limit, hex_colors_map, title)
+    plot_compare(
+        image,
+        color_keys_selected,
+        color_selected_distance,
+        lower_y_limit,
+        higher_y_limit,
+        hex_colors_map,
+        title,
+        foreground_mask=foreground_mask,
+    )
     plot_compare_mapped_image(
         image,
         st.session_state['custom_color_chart'],
@@ -195,12 +204,27 @@ def main():
                 st.image(st.session_state['plot_image'], caption='Original Image with Annotations')
 
             if 'segmented_images' in st.session_state:
+                show_white_background = st.toggle(
+                    'Preview with white background outside mask',
+                    value=True,
+                    key='page8_white_bg_preview',
+                )
+
                 # Display all segmented images in a grid with 2 columns
                 cols = st.columns(2)
                 for i, img in enumerate(st.session_state['segmented_images']):
                     col = cols[i % 2]
                     with col:
-                        st.image(img, caption=f'Image {i}', use_column_width=True)
+                        if show_white_background:
+                            display_img = paint_non_mask_pixels(
+                                img,
+                                foreground_mask=st.session_state['segmented_foreground_masks'][i],
+                            )
+                            caption = f'Image {i} (White BG outside mask)'
+                        else:
+                            display_img = img
+                            caption = f'Image {i} (Raw masked view)'
+                        st.image(display_img, caption=caption, use_column_width=True)
 
 
                 # User selects multiple segmented images
@@ -215,7 +239,16 @@ def main():
                         stacked_image = stack_images(stacked_images, direction="horizontal")
                         stacked_masks = [st.session_state['segmented_foreground_masks'][idx] for idx in selected_indices]
                         stacked_foreground_mask = np.hstack(stacked_masks)
-                        st.image(stacked_image, caption='Stacked Image', use_column_width=True)
+                        if show_white_background:
+                            stacked_display = paint_non_mask_pixels(
+                                stacked_image,
+                                foreground_mask=stacked_foreground_mask,
+                            )
+                            stacked_caption = 'Stacked Image (White BG outside mask)'
+                        else:
+                            stacked_display = stacked_image
+                            stacked_caption = 'Stacked Image (Raw masked view)'
+                        st.image(stacked_display, caption=stacked_caption, use_column_width=True)
                         st.session_state['stacked_image'] = stacked_image
                         st.session_state['stacked_foreground_mask'] = stacked_foreground_mask
                         
