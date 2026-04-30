@@ -266,17 +266,62 @@ def get_sorted_by_area(image, anns):
     return df , cropped_image_dic , mask_pixles_dic
 
 
+def get_sorted_by_area_with_foreground(image, anns):
+    """Return crops plus foreground masks for each SAM annotation, sorted by area."""
+
+    area_list = []
+    cropped_image_dic = {}
+    cropped_foreground_mask_dic = {}
+    mask_number = []
+
+    for i in range(len(anns)):
+        x, y, width, height = anns[i]['bbox']
+        x, y, width, height = int(x), int(y), int(width), int(height)
+        area = anns[i]["area"]
+
+        image_b, _masked_pixels = background_to_black(image=image, index=i, masks=anns)
+        cropped_image = image_b[y:y + height, x:x + width]
+
+        seg_mask = np.asarray(anns[i]['segmentation']).astype(bool)
+        cropped_mask = seg_mask[y:y + height, x:x + width]
+
+        area_list.append(area)
+        cropped_image_dic[i] = cropped_image
+        cropped_foreground_mask_dic[i] = cropped_mask
+        mask_number.append(i)
+
+    df = pd.DataFrame([area_list, mask_number]).T
+    df.columns = ['area', 'mask_number']
+    df.sort_values(by='area', ascending=False, inplace=True)
+    df.dropna(inplace=True)
+    return df, cropped_image_dic, cropped_foreground_mask_dic
+
+
+def _get_pixels_by_mask(image, foreground_mask=None):
+    """Return Nx3 RGB pixels from foreground mask; if mask is None keep legacy non-black behavior."""
+
+    if foreground_mask is not None:
+        mask = np.asarray(foreground_mask).astype(bool)
+        if mask.ndim != 2 or mask.shape != image.shape[:2]:
+            raise ValueError("foreground_mask must be a 2D boolean array matching image height/width")
+        return image[mask]
+
+    # Legacy path: infer foreground from non-black pixels.
+    return image[np.any(image != [0, 0, 0], axis=-1)]
+
+
 
 
 def RGB2HEX(color):
     return "#{:02x}{:02x}{:02x}".format(int(color[0]), int(color[1]), int(color[2]))
 
 
-def get_colors(image, number_of_colors, show_chart):
-    # Drop all black pixels from the image
-    non_black_pixels = image[np.any(image != [0, 0, 0], axis=-1)]
-    
-    modified_image = non_black_pixels.reshape(non_black_pixels.shape[0], 3)
+def get_colors(image, number_of_colors, show_chart, foreground_mask=None):
+    selected_pixels = _get_pixels_by_mask(image=image, foreground_mask=foreground_mask)
+    if selected_pixels.size == 0:
+        return []
+
+    modified_image = selected_pixels.reshape(selected_pixels.shape[0], 3)
     # modified_image = image.reshape(image.shape[0]*image.shape[1], 3)
 
     labels, center_colors = kmeans_fit_predict(
@@ -338,11 +383,16 @@ def drop_black_from_top_colors(top_colors_list):
     return top_colors_list
 
 
-def match_image_by_color(image, color, threshold = 60, number_of_colors = 10): 
+def match_image_by_color(image, color, threshold = 60, number_of_colors = 10, foreground_mask=None): 
     
-    image_colors = get_colors(image, number_of_colors, False)
-    # discard black
-    image_colors = drop_black_from_top_colors(image_colors)
+    image_colors = get_colors(image, number_of_colors, False, foreground_mask=foreground_mask)
+    if len(image_colors) == 0:
+        return 1000
+
+    # Keep legacy behavior only when no explicit mask is provided.
+    if foreground_mask is None and len(image_colors) > 1:
+        image_colors = drop_black_from_top_colors(image_colors)
+
     selected_color = rgb2lab(np.uint8(np.asarray([[color]])))
 
     diff_list =[]
@@ -358,7 +408,7 @@ def match_image_by_color(image, color, threshold = 60, number_of_colors = 10):
         # a euclidean difference of 1000 should be noticible 
         return 1000
     
-def calculate_distances_to_colors(image, custom_color_chart):
+def calculate_distances_to_colors(image, custom_color_chart, foreground_mask=None):
     # color chart but in RGB 
     # color_map_RGB = {
     # 'B1': (247, 248, 232),
@@ -393,7 +443,12 @@ def calculate_distances_to_colors(image, custom_color_chart):
     # get the distance 
     final_distances = {}
     for key in color_map_RGB.keys():
-        max_val = match_image_by_color( image=image, color=color_map_RGB[key], number_of_colors=6)
+        max_val = match_image_by_color(
+            image=image,
+            color=color_map_RGB[key],
+            number_of_colors=6,
+            foreground_mask=foreground_mask,
+        )
         if max_val != 0 :
             final_distances[key]=max_val
     df_final = pd.DataFrame.from_dict(final_distances,orient='index',columns=["Distance"])
@@ -503,14 +558,22 @@ def closest_color(pixel, palette, palette_keys, color_map_RGB):
 
 #     return mapped_img ,color_map_RGB
 
-def process_images(image, masks):
+def process_images(image, masks, return_foreground_masks=False):
     """Process the images"""
     # print (type(image),type(masks), "process_images")
 
-    image_dataframe, cropped_image_list , mask_pixels_dict = get_sorted_by_area( image=image , anns=masks )
+    image_dataframe, cropped_image_list, cropped_mask_list = get_sorted_by_area_with_foreground(
+        image=image,
+        anns=masks,
+    )
     top_six_img_by_area = image_dataframe['mask_number'].head(n=10).to_list()
     list_of_images = [ cropped_image_list [idx ] for idx in top_six_img_by_area  ]
+    list_of_foreground_masks = [cropped_mask_list[idx] for idx in top_six_img_by_area]
     titles = ['Image 1', 'Image 2', 'Image 3', 'Image 4', 'Image 5', 'Image 6','Image 7','Image 8','Image 9','Image 10']
+
+    if return_foreground_masks:
+        return list_of_images, titles, list_of_foreground_masks
+
     return list_of_images , titles
 
 
@@ -574,7 +637,7 @@ def _map_color_to_pixels_gpu(image, color_map_RGB):
     return mapped_img_cpu, color_map_RGB, color_to_pixels
 
 
-def _map_color_to_pixels_cpu(image, color_map_RGB):
+def _map_color_to_pixels_cpu(image, color_map_RGB, foreground_mask=None):
     palette_keys = list(color_map_RGB.keys())
     palette_rgb = np.array([color_map_RGB[key] for key in palette_keys], dtype=np.uint8)
 
@@ -582,13 +645,27 @@ def _map_color_to_pixels_cpu(image, color_map_RGB):
     palette_lab = rgb2lab(palette_rgb.reshape(1, -1, 3)).reshape(-1, 3)
 
     height, width, _ = image.shape
-    flat_lab = image_lab.reshape(-1, 3)
+    if foreground_mask is not None:
+        mask = np.asarray(foreground_mask).astype(bool)
+        if mask.ndim != 2 or mask.shape != image.shape[:2]:
+            raise ValueError("foreground_mask must be a 2D boolean array matching image height/width")
+        flat_lab = image_lab[mask].reshape(-1, 3)
+    else:
+        flat_lab = image_lab.reshape(-1, 3)
+
+    if flat_lab.shape[0] == 0:
+        return np.zeros_like(image), color_map_RGB, defaultdict(list)
+
     distances = np.linalg.norm(flat_lab[:, None, :] - palette_lab[None, :, :], axis=2)
 
     closest_idx = np.argmin(distances, axis=1)
-    min_distances = distances[np.arange(distances.shape[0]), closest_idx].reshape(height, width)
+    min_distances = distances[np.arange(distances.shape[0]), closest_idx]
 
-    mapped_img = palette_rgb[closest_idx].reshape(height, width, 3)
+    if foreground_mask is not None:
+        mapped_img = np.zeros((height, width, 3), dtype=np.uint8)
+        mapped_img[mask] = palette_rgb[closest_idx]
+    else:
+        mapped_img = palette_rgb[closest_idx].reshape(height, width, 3)
 
     color_to_pixels = defaultdict(list)
     labels_flat = np.array(palette_keys, dtype=object)[closest_idx]
@@ -598,12 +675,20 @@ def _map_color_to_pixels_cpu(image, color_map_RGB):
     return mapped_img, color_map_RGB, color_to_pixels
 
 
-def map_color_to_pixels(image, color_map_RGB):
+def map_color_to_pixels(image, color_map_RGB, foreground_mask=None):
     """Map each pixel to the closest palette color, using RAPIDS when available."""
 
     color_map_RGB = dict(color_map_RGB)
     if "Black" not in color_map_RGB:
         color_map_RGB["Black"] = (0, 0, 0)
+
+    # For explicit foreground masks, use CPU path to avoid mapping background pixels.
+    if foreground_mask is not None:
+        return _map_color_to_pixels_cpu(
+            image,
+            color_map_RGB,
+            foreground_mask=foreground_mask,
+        )
 
     if rapids_available() and _RAPIDS_STATE["cupy"] is not None:
         try:
@@ -616,45 +701,43 @@ def map_color_to_pixels(image, color_map_RGB):
 
 
 
-def count_pixel_colors(image, color_map_RGB):
-  """
-  Counts the number of pixels of each color in an image.
+def count_pixel_colors(image, color_map_RGB, foreground_mask=None):
+    """
+    Counts the number of pixels of each color in an image.
 
-  Args:
-    image: A NumPy array representing the image.
-    color_map_RGB: A dictionary mapping color names to RGB tuples.
+    Args:
+      image: A NumPy array representing the image.
+      color_map_RGB: A dictionary mapping color names to RGB tuples.
 
-  Returns:
-    A dictionary mapping color names to the number of pixels of that color in the image.
-  """
-  # Flatten the image into a 1D array
-  # image_flat = image.flatten()
-  # return image_flat
-  reverse_dict = { value : key for key , value in color_map_RGB.items() }  
+    Returns:
+      A dictionary mapping color names to the number of pixels of that color in the image.
+    """
+    reverse_dict = {value: key for key, value in color_map_RGB.items()}
 
+    # iterate over the image pixels
+    if foreground_mask is not None:
+        mask = np.asarray(foreground_mask).astype(bool)
+        if mask.ndim != 2 or mask.shape != image.shape[:2]:
+            raise ValueError("foreground_mask must be a 2D boolean array matching image height/width")
+        all_pixels_list = image[mask].reshape(-1, 3)
+    else:
+        all_pixels_list = image.reshape(-1, 3)
 
-  # iterate over the image pixels
-  all_pixels_list =[]
-  for i in range(image.shape[0]):
-      for j in range(image.shape[1]):
-        pixel = image[i, j]  
-        # discard black 
-        # if reverse_dict[str(pixel)] != 'Black':
-        all_pixels_list.append(pixel)
+    # Count the occurrences of each pixel value
+    pixel_counts = Counter(tuple(pixel_1) for pixel_1 in all_pixels_list)
+    pixel_counts.pop((0, 0, 0), None)
 
-  # # Count the occurrences of each pixel value
-  pixel_counts = Counter(tuple(pixel_1) for pixel_1 in all_pixels_list)
-  # delete the black key from the dictionary 
-  del pixel_counts[(0,0,0)] 
+    # sum non-black values for percentage base
+    total_pixels = np.sum([item for key, item in pixel_counts.items() if key != (0, 0, 0)])
+    if total_pixels == 0:
+        return pixel_counts, {color_name: 0 for color_name in reverse_dict.values()}
 
-  # pass the values to a list 
-  total_pixels = [ item for key , item in pixel_counts.items() if key != (0,0,0)]
-  # sum all the values 
-  total_pixels = np.sum(total_pixels)
-  # # Count the number of pixels of each color in the color map
-  color_counts = {color_name: pixel_counts.get(color_rgb, 0)/total_pixels * 100 for color_rgb,color_name in reverse_dict.items()}
+    color_counts = {
+        color_name: pixel_counts.get(color_rgb, 0) / total_pixels * 100
+        for color_rgb, color_name in reverse_dict.items()
+    }
 
-  return pixel_counts, color_counts 
+    return pixel_counts, color_counts
 
 
 
@@ -666,16 +749,24 @@ def count_pixel_colors(image, color_map_RGB):
 
 
     # get the mapped image 
-def plot_compare_mapped_image(img1_rgb,color_map_RGB):
+def plot_compare_mapped_image(img1_rgb, color_map_RGB, foreground_mask=None):
+    color_map_RGB = dict(color_map_RGB)
     if 'Black' not in color_map_RGB.keys():
         color_map_RGB['Black'] = tuple([0, 0, 0])
 
-    mapped_image , color_map , color_to_pixels = map_color_to_pixels(image=img1_rgb, color_map_RGB=color_map_RGB )
-    del color_map['Black'] 
-    del color_to_pixels['Black']
+    mapped_image, color_map, color_to_pixels = map_color_to_pixels(
+        image=img1_rgb,
+        color_map_RGB=color_map_RGB,
+        foreground_mask=foreground_mask,
+    )
+    color_map.pop('Black', None)
+    color_to_pixels.pop('Black', None)
 
-
-    color_counts, reverse_dict = count_pixel_colors(image=mapped_image , color_map_RGB=color_map)
+    color_counts, reverse_dict = count_pixel_colors(
+        image=mapped_image,
+        color_map_RGB=color_map,
+        foreground_mask=foreground_mask,
+    )
     lists = sorted(reverse_dict.items(), key=lambda kv: kv[1], reverse=True)
 
     color_name, percentage_color_name = [], []
