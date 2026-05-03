@@ -82,16 +82,31 @@ def load_model_and_segment(image, model_option='Model_B'):
     pred_iou_thresh = 0.72
     stability_score_thresh = 0.62
 
-    mask_generator = SamAutomaticMaskGenerator(
-        model=sam,
-        points_per_side=points_per_side,
-        pred_iou_thresh=pred_iou_thresh,
-        stability_score_thresh=stability_score_thresh,
-        crop_n_layers=1,
-        crop_n_points_downscale_factor=2,
-        min_mask_region_area=100,  # Requires open-cv to run post-processing
-    )
-    masks = mask_generator.generate(image)
+    def build_mask_generator(crop_n_layers):
+        return SamAutomaticMaskGenerator(
+            model=sam,
+            points_per_side=points_per_side,
+            pred_iou_thresh=pred_iou_thresh,
+            stability_score_thresh=stability_score_thresh,
+            crop_n_layers=crop_n_layers,
+            crop_n_points_downscale_factor=2,
+            min_mask_region_area=100,  # Requires open-cv to run post-processing
+        )
+
+    try:
+        masks = build_mask_generator(crop_n_layers=1).generate(image)
+    except Exception as e:
+        st.warning(f"Segmentation fallback activated (crop_n_layers=0). Cause: {e}")
+        try:
+            masks = build_mask_generator(crop_n_layers=0).generate(image)
+        except Exception as fallback_error:
+            st.error(f"Segmentation failed after fallback: {fallback_error}")
+            return []
+
+    if not masks:
+        st.warning("No masks were produced for this image.")
+        return []
+
     return masks
 
 
@@ -180,6 +195,13 @@ def main():
             st.session_state['segment'] = True
             # if st.session_state.get('segment'):
             masks = load_model_and_segment(coral_image, model_option)
+            if not masks:
+                st.session_state['segment'] = False
+                st.session_state.pop('segmented_images', None)
+                st.session_state.pop('segmented_foreground_masks', None)
+                st.session_state.pop('titles', None)
+                st.session_state.pop('plot_image', None)
+                st.stop()
             # print(type(masks),masks)
             list_of_images, titles, list_of_foreground_masks = process_images(
                 image=coral_image,
