@@ -298,6 +298,26 @@ def main():
     # images = []
     # csvs = []
     uploaded_files = st.file_uploader("Choose the images ...", type=["bmp", "jpg", "jpeg", "png", "svg"], accept_multiple_files=True)
+    
+    total_uploaded = len(uploaded_files)
+
+    process_all_masks = st.checkbox(
+        "Process all masks",
+        value=False,
+        disabled=(total_uploaded == 0),
+        help="If enabled, all detected masks are processed for each image."
+    )
+
+    max_masks_per_image = st.number_input(
+        "Max masks to process per image",
+        min_value=1,
+        max_value=200,
+        value=10,
+        step=1,
+        help="For each uploaded image, process only the first N detected masks.",
+        disabled=(total_uploaded == 0 or process_all_masks),
+    )
+    
     for uploaded_file in uploaded_files:
         # bytes_data = uploaded_file.read()
         st.write("filename:", uploaded_file.name)
@@ -341,13 +361,21 @@ def main():
                 return_foreground_masks=True,
             )
 
-            if len(list_of_images) > 1:
-                st.write(f"Warning {len(list_of_images)} coral images detected on image:{name}")
+            # if len(list_of_images) > 1:
+            #     st.write(f"Warning {len(list_of_images)} coral images detected on image:{name}")
+            num_detected = len(list_of_images)
+            num_to_process = min(int(max_masks_per_image), num_detected)
+
+            if not process_all_masks and num_detected > num_to_process:
+                st.info(f"{name}: processing {num_to_process} of {num_detected} detected masks.")
+
+            limited_pairs = list(zip(list_of_images, list_of_foreground_masks))[:num_to_process]
 
 
             # if len(list_of_images) > 1: # we have to change this for the for look 
             with st.status(f"Processing images of {name} ...", expanded=True) as status:
-                for idx, (img, fg_mask) in enumerate(zip(list_of_images, list_of_foreground_masks)):
+                for idx, (img, fg_mask) in enumerate(limited_pairs):
+                # for idx, (img, fg_mask) in enumerate(zip(list_of_images, list_of_foreground_masks)):
                     start_time = time.time()  # Record the start time 
                     # relocate the idx to the for loop here and add the name of the image
                     # relocate also the st.session_state[f"mapped_image_{idx}_{name}"] = fig
