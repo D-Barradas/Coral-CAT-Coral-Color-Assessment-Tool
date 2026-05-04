@@ -32,8 +32,53 @@ def is_cuda_available():
     return torch.cuda.is_available()
 
 # Function to load a model based on selection
+# def load_model_and_segment(image, model_option='Model_B'):
+#     sam_checkpoint = "../checkpoints/vit_b_coralscop.pth"  # this is coralSCOPE
+#     model_type = "vit_b"
+
+#     if is_cuda_available():
+#         st.markdown("CUDA is available!")
+#         device = torch.device("cuda")  # reactivate the previous line for the app
+#     else:
+#         st.markdown("CUDA is not available. Using CPU.")
+#         device = torch.device("cpu")
+
+#     sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
+#     sam.to(device=device)
+
+#     # Parameters for CoralScope
+#     points_per_side = 32
+#     pred_iou_thresh = 0.72
+#     stability_score_thresh = 0.62
+
+#     def build_mask_generator(crop_n_layers):
+#         return SamAutomaticMaskGenerator(
+#             model=sam,
+#             points_per_side=points_per_side,
+#             pred_iou_thresh=pred_iou_thresh,
+#             stability_score_thresh=stability_score_thresh,
+#             crop_n_layers=crop_n_layers,
+#             crop_n_points_downscale_factor=2,
+#             min_mask_region_area=100,  # Requires open-cv to run post-processing
+#         )
+
+#     try:
+#         masks = build_mask_generator(crop_n_layers=1).generate(image)
+#     except Exception as e:
+#         st.warning(f"Segmentation fallback activated (crop_n_layers=0). Cause: {e}")
+#         try:
+#             masks = build_mask_generator(crop_n_layers=0).generate(image)
+#         except Exception as fallback_error:
+#             st.error(f"Segmentation failed after fallback: {fallback_error}")
+#             return []
+
+#     if not masks:
+#         st.warning("No masks were produced for this image.")
+#         return []
+
+#     return masks
 def load_model_and_segment(image, model_option='Model_B'):
-    sam_checkpoint = "../checkpoints/vit_b_coralscop.pth"  # this is coralSCOPE
+    sam_checkpoint = "checkpoints/vit_b_coralscop.pth"  # this is coralSCOPE
     model_type = "vit_b"
 
     if is_cuda_available():
@@ -51,33 +96,23 @@ def load_model_and_segment(image, model_option='Model_B'):
     pred_iou_thresh = 0.72
     stability_score_thresh = 0.62
 
-    def build_mask_generator(crop_n_layers):
-        return SamAutomaticMaskGenerator(
-            model=sam,
-            points_per_side=points_per_side,
-            pred_iou_thresh=pred_iou_thresh,
-            stability_score_thresh=stability_score_thresh,
-            crop_n_layers=crop_n_layers,
-            crop_n_points_downscale_factor=2,
-            min_mask_region_area=100,  # Requires open-cv to run post-processing
-        )
-
+    mask_generator = SamAutomaticMaskGenerator(
+        model=sam,
+        points_per_side=points_per_side,
+        pred_iou_thresh=pred_iou_thresh,
+        stability_score_thresh=stability_score_thresh,
+        crop_n_layers=1,
+        crop_n_points_downscale_factor=2,
+        min_mask_region_area=100,  # Requires open-cv to run post-processing
+    )
     try:
-        masks = build_mask_generator(crop_n_layers=1).generate(image)
+        masks = mask_generator.generate(image)
+        return masks
+
     except Exception as e:
-        st.warning(f"Segmentation fallback activated (crop_n_layers=0). Cause: {e}")
-        try:
-            masks = build_mask_generator(crop_n_layers=0).generate(image)
-        except Exception as fallback_error:
-            st.error(f"Segmentation failed after fallback: {fallback_error}")
-            return []
-
-    if not masks:
-        st.warning("No masks were produced for this image.")
+        st.warning(f"Segmentation failed with default parameters. Clear cache and edit image and re-upload")
+        st.error(f"Error occurred while generating masks: {e}")
         return []
-
-    return masks
-
 
 
 # Function to create and store the plot in session state
